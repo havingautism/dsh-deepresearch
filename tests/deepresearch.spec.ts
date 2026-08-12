@@ -31,69 +31,101 @@ async function harness(root?: string): Promise<Context> {
   await ctx.plugin(StorageDomain, { backend: 'json' })
   await ctx.plugin(DeepResearch, {
     maxProjects: 2,
-    maxEvidencePerProject: 2,
-    maxReportChars: 80,
+    maxQuestions: 4,
+    maxCriteriaPerQuestion: 3,
+    maxEvidencePerProject: 3,
+    maxReportChars: 160,
   })
   return ctx
 }
 
 describe('Deep Research extension', () => {
-  it('publishes its Remote namespace and model Tool names without another extension', async () => {
+  it('publishes its complete independent Remote and Tool surface', async () => {
     const ctx = await harness()
     expect(ctx.deepResearch.typertGateway.namespace).toBe('deepResearch')
     expect(remoteMethods(ctx.deepResearch).map(marker => marker.method)).toEqual([
-      'list', 'get', 'start', 'addEvidence', 'complete',
+      'list', 'get', 'start', 'updatePlan', 'confirmPlan', 'addEvidence',
+      'updateQuestion', 'complete', 'fail', 'delete',
     ])
     expect(ctx.tools.schemas().map(schema => schema.name)).toEqual([
-      'deep_research_start',
-      'deep_research_add_evidence',
-      'deep_research_complete',
-      'deep_research_list',
+      'deep_research_start', 'deep_research_list', 'deep_research_confirm_plan',
+      'deep_research_add_evidence', 'deep_research_update_coverage', 'deep_research_complete',
     ])
   })
 
-  it('moves research from planning through evidence to a final report', async () => {
+  it('moves a reviewed plan through evidence and coverage to a report', async () => {
     const ctx = await harness()
     const started = await ctx.deepResearch.start({
       question: 'How should tool rows replay?',
+      goal: 'Produce a verifiable renderer recommendation.',
+      constraints: 'Use durable evidence only.',
       depth: 'deep',
-      plan: ['Read the event contract', 'Compare live and replay output'],
+      questions: [
+        { text: 'What is the event contract?', criteria: ['Identify the durable inputs'] },
+        { text: 'How should replay render?', criteria: ['Compare live and replay'], dependsOn: [0] },
+      ],
     })
-    expect(started).toMatchObject({ phase: 'planning', evidence: [], report: null })
-
-    const investigating = await ctx.deepResearch.addEvidence({
-      id: started.id,
-      source: 'Tool UI contract',
-      url: 'https://example.test/tool-ui',
-      summary: 'Presentation is a pure function of logged arguments and results.',
-    })
-    expect(investigating.phase).toBe('researching')
-    expect(investigating.evidence).toHaveLength(1)
-    const complete = await ctx.deepResearch.complete({
-      id: started.id,
-      report: 'Use logged call/result data and avoid live catalog reads.',
-    })
-    expect(complete.phase).toBe('complete')
-    expect(ctx.deepResearch.list({ phase: 'complete' }).projects).toEqual([complete])
+    expect(started).toMatchObject({ phase: 'awaiting_plan_confirm', planConfirmed: false, evidence: [], report: null })
+    expect(started.questions[1]?.dependsOn).toEqual([started.questions[0]?.id])
     await expect(ctx.deepResearch.addEvidence({
       id: started.id,
-      source: 'Late source',
-      summary: 'Should be rejected.',
-    })).rejects.toThrow('is complete')
+      questionId: started.questions[0]!.id,
+      source: 'Premature source',
+      claim: 'Should be rejected.',
+      confidence: 'low',
+    })).rejects.toThrow('plan is not confirmed')
+
+    const confirmed = await ctx.deepResearch.confirmPlan({ id: started.id })
+    expect(confirmed.phase).toBe('investigating')
+    const withEvidence = await ctx.deepResearch.addEvidence({
+      id: started.id,
+      questionId: started.questions[0]!.id,
+      criterionIds: [started.questions[0]!.criteria[0]!.id],
+      source: 'Tool UI contract',
+      url: 'https://example.test/tool-ui',
+      snippet: 'Presentation is pure.',
+      claim: 'Presentation derives from logged arguments and results.',
+      confidence: 'high',
+    })
+    expect(withEvidence.evidence[0]).toMatchObject({ confidence: 'high', source: 'Tool UI contract' })
+    await ctx.deepResearch.updateQuestion({ id: started.id, questionId: started.questions[0]!.id, status: 'covered' })
+    const ready = await ctx.deepResearch.updateQuestion({ id: started.id, questionId: started.questions[1]!.id, status: 'partial' })
+    expect(ready.phase).toBe('ready_for_report')
+    const complete = await ctx.deepResearch.complete({
+      id: started.id,
+      report: 'Use logged call and result data; keep unresolved comparisons visible.',
+      conclusions: ['Replay is log-derived.'],
+      limitations: ['The comparison remains partial.'],
+      partial: true,
+    })
+    expect(complete.phase).toBe('incomplete')
+    expect(complete.limitations).toEqual(['The comparison remains partial.'])
+    expect(ctx.deepResearch.list({ query: 'logged call' }).projects).toEqual([complete])
   })
 
-  it('retains projects across a cold storage restart', async () => {
+  it('supports plan editing, aborts, and durable cold restarts', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-deepresearch-restart-'))
     roots.push(root)
     const first = await harness(root)
     const research = await first.deepResearch.start({
-      question: 'Will this survive?', depth: 'quick', plan: ['Restart'],
+      question: 'Will this survive?', depth: 'quick',
+      questions: [{ text: 'Check persistence', criteria: ['Restart'] }],
     })
+    const revised = await first.deepResearch.updatePlan({
+      id: research.id,
+      goal: 'Verify durable restoration.',
+      constraints: 'Cold restart only.',
+      depth: 'standard',
+      questions: [{ text: 'Restart the context', criteria: ['Read the same project'] }],
+    })
+    expect(revised.budget.maxSearches).toBeGreaterThan(research.budget.maxSearches)
+    await first.deepResearch.fail({ id: research.id, reason: 'User stopped the run.', aborted: true })
     await first.fiber.dispose()
     contexts.splice(contexts.indexOf(first), 1)
 
     const second = await harness(root)
-    expect(second.deepResearch.get({ id: research.id })?.question).toBe('Will this survive?')
+    expect(second.deepResearch.get({ id: research.id })).toMatchObject({ phase: 'aborted', goal: 'Verify durable restoration.' })
     expect(second.deepResearch.get({ id: ResearchId('missing') })).toBeNull()
+    await expect(second.deepResearch.delete({ id: research.id })).resolves.toEqual({ deleted: true })
   })
 })

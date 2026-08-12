@@ -1,110 +1,69 @@
-/** Durable research board panel. */
+/** Codemini-aligned Deep Research library and evidence workspace. */
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { ConvViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { InjectFace } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ResearchDepth, ResearchProject } from '../types.ts'
+import type { ResearchDepth, ResearchPhase, ResearchProject, ResearchStartRequest } from '../types.ts'
 import type { ResearchViewApi } from './view-types.ts'
 import css from './views.module.css'
 
-/** Render project creation, phase summaries, evidence, and reports. */
-export function ResearchView({ list, start }: ConvViewProps & InjectFace<ResearchViewApi>) {
+type PhaseFilter = 'all' | 'planning' | 'investigating' | 'done'
+
+/** Render the research library, editable plan, investigation evidence, and report. */
+export function ResearchView(api: ConvViewProps & InjectFace<ResearchViewApi>) {
   const [projects, setProjects] = useState<readonly ResearchProject[]>([])
+  const [selected, setSelected] = useState<ResearchProject | null>(null)
   const [query, setQuery] = useState('')
-  const [question, setQuestion] = useState('')
-  const [depth, setDepth] = useState<ResearchDepth>('standard')
-  const [plan, setPlan] = useState('界定问题\n检索权威来源\n交叉验证关键结论\n综合报告与不确定性')
+  const [filter, setFilter] = useState<PhaseFilter>('all')
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [sort, setSort] = useState<'recent' | 'title'>('recent')
+  const [composerOpen, setComposerOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const refresh = useCallback(async (nextQuery: string) => {
-    setError(null)
-    try { setProjects(await list(nextQuery)) } catch (cause) { setError(messageOf(cause)) }
-  }, [list])
-
+  const refresh = useCallback(async (nextQuery: string) => { setError(null); try { const next = await api.list(nextQuery); setProjects(next); setSelected(current => current === null ? null : next.find(item => item.id === current.id) ?? current) } catch (cause) { setError(messageOf(cause)) } }, [api])
   useEffect(() => { void refresh('') }, [refresh])
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
-    const steps = plan.split('\n').map(step => step.trim()).filter(step => step !== '')
-    if (busy || question.trim() === '' || steps.length === 0) return
-    setBusy(true)
-    setError(null)
-    void start({ question, depth, plan: steps }).then(
-      () => {
-        setQuestion('')
-        setBusy(false)
-        void refresh(query)
-      },
-      (cause: unknown) => {
-        setError(messageOf(cause))
-        setBusy(false)
-      },
-    )
-  }
+  const visible = useMemo(() => {
+    const phaseMatch = (phase: ResearchPhase) => filter === 'all' || filter === 'planning' && ['planning', 'awaiting_plan_confirm'].includes(phase) || filter === 'investigating' && ['investigating', 'ready_for_report', 'writing'].includes(phase) || filter === 'done' && ['done', 'incomplete'].includes(phase)
+    const filtered = projects.filter(project => phaseMatch(project.phase))
+    return sort === 'title' ? filtered.toSorted((left, right) => left.title.localeCompare(right.title)) : filtered.toSorted((left, right) => right.updatedAt - left.updatedAt)
+  }, [filter, projects, sort])
 
-  return (
-    <div className={css.shell} data-conversation-composer-overlay="">
-      <header className={css.hero}>
-        <div>
-          <p className={css.eyebrow}>DEEP RESEARCH</p>
-          <h2 className={css.heading}>深度研究</h2>
-          <p className={css.subtitle}>先计划，再调查；证据、来源和报告持续留档。</p>
-        </div>
-        <div className={css.searchGroup}>
-          <input className={css.input} value={query} onChange={(event) => { setQuery(event.target.value) }} placeholder="搜索研究问题或报告" />
-          <button className={css.secondaryButton} type="button" onClick={() => { void refresh(query) }}>搜索</button>
-        </div>
-      </header>
+  const updateSelected = (project: ResearchProject) => { setSelected(project); setProjects(current => current.map(item => item.id === project.id ? project : item)) }
+  if (selected !== null) return <ResearchWorkspace project={selected} api={api} onChange={updateSelected} onBack={() => { setSelected(null) }} onDelete={async () => { await api.delete(selected.id); setSelected(null); await refresh(query) }} error={error} setError={setError} />
 
-      <div className={css.columns}>
-        <form className={css.editor} onSubmit={submit}>
-          <div className={css.sectionTitle}>发起研究</div>
-          <textarea className={css.question} value={question} onChange={(event) => { setQuestion(event.target.value) }} placeholder="要深入研究什么？" />
-          <select className={css.input} value={depth} onChange={(event) => { setDepth(event.target.value as ResearchDepth) }}>
-            <option value="quick">快速</option>
-            <option value="standard">标准</option>
-            <option value="deep">深入</option>
-          </select>
-          <textarea className={css.plan} value={plan} onChange={(event) => { setPlan(event.target.value) }} aria-label="研究计划，每行一步" />
-          <button className={css.primaryButton} type="submit" disabled={busy}>{busy ? '创建中…' : '创建研究计划'}</button>
-          <p className={css.hint}>创建后，让模型按计划使用 Web / subagent 调研并写入证据。</p>
-          {error === null ? null : <div className={css.error} role="alert">{error}</div>}
-        </form>
-
-        <section className={css.library} aria-label="研究项目">
-          <div className={css.sectionTitle}>研究看板 <span className={css.count}>{projects.length}</span></div>
-          {projects.length === 0 ? <div className={css.empty}>暂无研究项目。</div> : null}
-          <div className={css.cardGrid}>
-            {projects.map(project => (
-              <article className={css.card} key={project.id}>
-                <div className={css.cardHeader}>
-                  <span className={css.phase} data-phase={project.phase}>{phaseLabel(project.phase)}</span>
-                  <span className={css.meta}>{project.depth} · {project.evidence.length} 条证据</span>
-                </div>
-                <h3 className={css.cardTitle}>{project.question}</h3>
-                <ol className={css.steps}>{project.plan.map(step => <li key={step}>{step}</li>)}</ol>
-                {project.report === null ? null : (
-                  <details className={css.report}><summary>查看最终报告</summary><p>{project.report}</p></details>
-                )}
-              </article>
-            ))}
-          </div>
-        </section>
-      </div>
-    </div>
-  )
+  return <div className={css.shell} data-conversation-composer-overlay=""><header className={css.libraryHeader}><div><p className={css.eyebrow}>DEEP RESEARCH</p><h2 className={css.heading}>深度研究</h2><p className={css.subtitle}>把复杂问题拆成计划、证据、覆盖度和可审查报告。</p></div><button className={css.primaryButton} type="button" onClick={() => { setComposerOpen(true) }}>＋ 发起研究</button></header><div className={css.toolbar}><div className={css.filters}>{([['all', '全部'], ['planning', '计划中'], ['investigating', '调查中'], ['done', '已完成']] as const).map(([id, label]) => <button key={id} className={filter === id ? css.activeChip : css.chip} type="button" onClick={() => { setFilter(id) }}>{label}</button>)}</div><div className={css.toolbarActions}><input className={css.search} value={query} onChange={event => { setQuery(event.target.value) }} onKeyDown={event => { if (event.key === 'Enter') void refresh(query) }} placeholder="搜索研究" /><select className={css.select} value={sort} onChange={event => { setSort(event.target.value as 'recent' | 'title') }}><option value="recent">最近更新</option><option value="title">按标题</option></select><button className={css.iconButton} type="button" data-active={viewMode === 'grid'} onClick={() => { setViewMode('grid') }}>▦</button><button className={css.iconButton} type="button" data-active={viewMode === 'list'} onClick={() => { setViewMode('list') }}>☷</button></div></div>{error === null ? null : <div className={css.error}>{error}</div>}<section className={viewMode === 'grid' ? css.projectGrid : css.projectList}>{visible.map((project, index) => <ProjectCard key={project.id} project={project} index={index} list={viewMode === 'list'} onOpen={() => { setSelected(project) }} onDelete={() => { void api.delete(project.id).then(() => refresh(query), cause => { setError(messageOf(cause)) }) }} />)}</section>{visible.length === 0 ? <button className={css.empty} type="button" onClick={() => { setComposerOpen(true) }}>暂无研究项目。发起第一次研究。</button> : null}{composerOpen ? <ResearchComposer busy={busy} setBusy={setBusy} onClose={() => { setComposerOpen(false) }} onCreate={async request => { const project = await api.start(request); setComposerOpen(false); await refresh(query); setSelected(project) }} setError={setError} /> : null}</div>
 }
 
-function phaseLabel(phase: ResearchProject['phase']): string {
-  switch (phase) {
-    case 'planning': return '计划中'
-    case 'researching': return '调查中'
-    case 'synthesizing': return '综合中'
-    case 'complete': return '已完成'
-  }
+function ProjectCard({ project, index, list, onOpen, onDelete }: { project: ResearchProject; index: number; list: boolean; onOpen: () => void; onDelete: () => void }) { const [emoji, title] = splitEmoji(project.title); return <article className={css.projectCard} data-list={list || undefined} style={{ '--card-tint': CARD_TONES[index % CARD_TONES.length] } as React.CSSProperties}><button className={css.cardOpen} type="button" onClick={onOpen} aria-label={`打开研究：${project.title}`} /><div className={css.cardEmoji}>{emoji || '⚡'}</div><div className={css.cardInfo}><h3>{title}</h3><p>{project.goal || project.question}</p><div><span className={css.phase} data-phase={project.phase}>{phaseLabel(project.phase)}</span><span>{project.evidence.length} 条证据 · {formatDate(project.updatedAt)}</span></div></div><button className={css.deleteButton} type="button" onClick={event => { event.stopPropagation(); onDelete() }}>×</button></article> }
+
+function ResearchComposer({ busy, setBusy, onClose, onCreate, setError }: { busy: boolean; setBusy: (value: boolean) => void; onClose: () => void; onCreate: (request: ResearchStartRequest) => Promise<void>; setError: (value: string | null) => void }) {
+  const [question, setQuestion] = useState(''); const [goal, setGoal] = useState(''); const [constraints, setConstraints] = useState(''); const [seedText, setSeedText] = useState(''); const [depth, setDepth] = useState<ResearchDepth>('standard'); const [plan, setPlan] = useState('界定核心问题 | 明确回答范围和判定标准\n检索权威来源 | 至少获得两个相互独立的来源\n交叉验证关键结论 | 识别一致、冲突和证据缺口\n综合报告 | 引用来源并说明不确定性')
+  const submit = (event: FormEvent) => { event.preventDefault(); if (busy || question.trim() === '') return; const questions = parsePlan(plan); if (questions.length === 0) return; setBusy(true); setError(null); void onCreate({ question, goal, constraints, seedText, depth, questions }).catch(cause => { setError(messageOf(cause)) }).finally(() => { setBusy(false) }) }
+  return <div className={css.modalBackdrop}><form className={css.modal} onSubmit={submit}><div className={css.modalHeader}><div><p className={css.eyebrow}>NEW RESEARCH</p><h3>研究向导</h3></div><button className={css.iconButton} type="button" onClick={onClose}>×</button></div><textarea className={css.questionInput} value={question} onChange={event => { setQuestion(event.target.value) }} placeholder="你想深入研究什么？" /><div className={css.formGrid}><input className={css.input} value={goal} onChange={event => { setGoal(event.target.value) }} placeholder="希望最终得到什么" /><select className={css.input} value={depth} onChange={event => { setDepth(event.target.value as ResearchDepth) }}><option value="quick">快速</option><option value="standard">标准</option><option value="deep">深入</option></select></div><textarea className={css.textareaSmall} value={constraints} onChange={event => { setConstraints(event.target.value) }} placeholder="时间、地域、来源或输出约束" /><textarea className={css.textareaSmall} value={seedText} onChange={event => { setSeedText(event.target.value) }} placeholder="粘贴已有笔记或摘录（可选）" /><label className={css.fieldLabel}>研究计划 <span>每行：子问题 | 验收标准</span></label><textarea className={css.planEditor} value={plan} onChange={event => { setPlan(event.target.value) }} /><div className={css.modalFooter}><button className={css.secondaryButton} type="button" onClick={onClose}>取消</button><button className={css.primaryButton} type="submit" disabled={busy}>{busy ? '创建中…' : '创建研究计划'}</button></div></form></div>
 }
 
-function messageOf(value: unknown): string {
-  return value instanceof Error ? value.message : String(value)
+function ResearchWorkspace({ project, api, onChange, onBack, onDelete, error, setError }: { project: ResearchProject; api: ResearchViewApi; onChange: (project: ResearchProject) => void; onBack: () => void; onDelete: () => Promise<void>; error: string | null; setError: (value: string | null) => void }) {
+  const [focus, setFocus] = useState<'plan' | 'investigate' | 'report'>(stepFor(project.phase)); const [goal, setGoal] = useState(project.goal); const [constraints, setConstraints] = useState(project.constraints); const [plan, setPlan] = useState(formatPlan(project)); const [report, setReport] = useState(project.report ?? ''); const [limitations, setLimitations] = useState(project.limitations.join('\n'))
+  useEffect(() => { setFocus(stepFor(project.phase)); setGoal(project.goal); setConstraints(project.constraints); setPlan(formatPlan(project)); setReport(project.report ?? ''); setLimitations(project.limitations.join('\n')) }, [project])
+  const action = async (operation: () => Promise<ResearchProject>) => { setError(null); try { onChange(await operation()) } catch (cause) { setError(messageOf(cause)) } }
+  const savePlan = () => { void action(() => api.updatePlan({ id: project.id, goal, constraints, depth: project.depth, questions: parsePlan(plan) })) }
+  const complete = (partial: boolean) => { void action(() => api.complete({ id: project.id, report, limitations: limitations.split('\n').map(value => value.trim()).filter(Boolean), partial })) }
+  return <div className={css.workspace} data-conversation-composer-overlay=""><header className={css.workspaceHeader}><button className={css.backButton} type="button" onClick={onBack}>← 深度研究</button><div><p className={css.eyebrow}>RESEARCH PROJECT</p><h2>{project.title}</h2></div><div className={css.headerActions}><span className={css.phase} data-phase={project.phase}>{phaseLabel(project.phase)}</span><button className={css.deleteText} type="button" onClick={() => { void onDelete() }}>删除</button></div></header>{error === null ? null : <div className={css.error}>{error}</div>}<nav className={css.stepper}>{([['plan', '1 计划'], ['investigate', '2 调查'], ['report', '3 报告']] as const).map(([id, label]) => <button key={id} type="button" data-active={focus === id} onClick={() => { setFocus(id) }}>{label}</button>)}</nav><div className={css.detailBody}>
+    {focus === 'plan' ? <section className={css.planPane}><div className={css.sectionHeader}><div><h3>研究计划</h3><p>确认后，模型按子问题和验收标准组合 Web / subagent 调查。</p></div><div className={css.headerActions}>{project.planConfirmed ? <span className={css.confirmed}>✓ 已确认</span> : <><button className={css.secondaryButton} type="button" onClick={savePlan}>保存修改</button><button className={css.primaryButton} type="button" onClick={() => { void action(() => api.confirmPlan(project.id)) }}>确认并开始</button></>}</div></div><div className={css.formGrid}><label>研究目标<textarea value={goal} onChange={event => { setGoal(event.target.value) }} disabled={project.planConfirmed} /></label><label>约束<textarea value={constraints} onChange={event => { setConstraints(event.target.value) }} disabled={project.planConfirmed} /></label></div><label className={css.fieldLabel}>子问题与验收标准</label><textarea className={css.planEditorLarge} value={plan} onChange={event => { setPlan(event.target.value) }} disabled={project.planConfirmed} /></section> : null}
+    {focus === 'investigate' ? <section><div className={css.metrics}><Metric label="子问题" value={`${project.questions.filter(q => q.status === 'covered').length}/${project.questions.length}`} /><Metric label="证据" value={String(project.evidence.length)} /><Metric label="检索预算" value={`${project.budget.searchesUsed}/${project.budget.maxSearches}`} /><Metric label="抓取预算" value={`${project.budget.fetchesUsed}/${project.budget.maxFetches}`} /></div><div className={css.boardGrid}><div><div className={css.sectionHeader}><div><h3>调查看板</h3><p>覆盖度来自模型对已保存证据的显式审查。</p></div>{project.phase === 'investigating' ? <button className={css.stopButton} type="button" onClick={() => { void action(() => api.fail(project.id, '用户停止了调查。', true)) }}>停止调查</button> : null}</div><div className={css.questions}>{project.questions.map((question, index) => <article className={css.questionCard} key={question.id}><div><span>{String(index + 1).padStart(2, '0')}</span><h4>{question.text}</h4><strong data-status={question.status}>{statusLabel(question.status)}</strong></div>{question.dependsOn.length > 0 ? <p>依赖 {question.dependsOn.length} 个上游问题</p> : null}<ul>{question.criteria.map(criterion => <li key={criterion.id} data-status={criterion.status}><span>{criterion.status === 'covered' ? '✓' : '○'}</span><div><b>{criterion.text}</b>{criterion.summary ? <p>{criterion.summary}</p> : null}{criterion.gap ? <em>{criterion.gap}</em> : null}</div></li>)}</ul></article>)}</div></div><aside className={css.evidencePane}><h3>来源证据 <span>{project.evidence.length}</span></h3>{project.evidence.length === 0 ? <p className={css.emptyText}>让模型使用 Web 工具调查，并调用 deep_research_add_evidence 保存来源。</p> : project.evidence.map(item => <article className={css.evidenceCard} key={item.id}><div><strong>{item.source}</strong><span data-confidence={item.confidence}>{item.confidence}</span></div><p>{item.claim}</p>{item.snippet ? <blockquote>{item.snippet}</blockquote> : null}{item.url === null ? null : <a href={item.url} target="_blank" rel="noreferrer">打开来源 ↗</a>}</article>)}</aside></div></section> : null}
+    {focus === 'report' ? <section className={css.reportPane}><div className={css.sectionHeader}><div><h3>综合报告</h3><p>比较证据、引用来源，并明确写出仍未解决的限制。</p></div><div className={css.headerActions}><button className={css.secondaryButton} type="button" onClick={() => { complete(true) }}>保存为部分完成</button><button className={css.primaryButton} type="button" onClick={() => { complete(false) }}>完成研究</button></div></div><textarea className={css.reportEditor} value={report} onChange={event => { setReport(event.target.value) }} placeholder="Markdown 研究报告…" /><label className={css.fieldLabel}>限制与未解决问题</label><textarea className={css.limitationsEditor} value={limitations} onChange={event => { setLimitations(event.target.value) }} placeholder="每行一项限制" /></section> : null}
+  </div></div>
 }
+
+function Metric({ label, value }: { label: string; value: string }) { return <div><span>{label}</span><strong>{value}</strong></div> }
+const CARD_TONES = ['#5b8def', '#3d9b8f', '#c27a4a', '#8b6bc9', '#4a9b6e', '#b85c7a']
+function parsePlan(value: string): ResearchStartRequest['questions'] { return value.split('\n').map(line => line.trim()).filter(Boolean).map(line => { const [text = '', criteria = ''] = line.split('|', 2); return { text: text.trim(), criteria: criteria.split(';').map(item => item.trim()).filter(Boolean) } }).filter(item => item.text !== '' && item.criteria.length > 0) }
+function formatPlan(project: ResearchProject): string { return project.questions.map(question => `${question.text} | ${question.criteria.map(item => item.text).join('; ')}`).join('\n') }
+function stepFor(phase: ResearchPhase): 'plan' | 'investigate' | 'report' { return ['planning', 'awaiting_plan_confirm'].includes(phase) ? 'plan' : ['ready_for_report', 'writing', 'done', 'incomplete'].includes(phase) ? 'report' : 'investigate' }
+function phaseLabel(phase: ResearchPhase): string { return ({ planning: '计划中', awaiting_plan_confirm: '待确认', investigating: '调查中', ready_for_report: '可写报告', incomplete: '部分完成', writing: '撰写中', done: '已完成', failed: '失败', aborted: '已停止' } as const)[phase] }
+function statusLabel(status: ResearchProject['questions'][number]['status']): string { return ({ pending: '待处理', running: '调查中', covered: '已覆盖', partial: '部分覆盖', blocked: '受阻', failed: '失败' } as const)[status] }
+function splitEmoji(value: string): [string, string] { const first = Array.from(value.trim())[0] ?? ''; return /\p{Extended_Pictographic}/u.test(first) ? [first, value.trim().slice(first.length).trim() || value] : ['', value] }
+function formatDate(value: number): string { return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(value) }
+function messageOf(value: unknown): string { return value instanceof Error ? value.message : String(value) }

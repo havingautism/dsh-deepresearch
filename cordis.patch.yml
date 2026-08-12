@@ -3,5 +3,7 @@
       name: '@deepseek-ai/dsh-deepresearch'
       config:
         maxProjects: 1000
+        maxQuestions: 20
+        maxCriteriaPerQuestion: 12
         maxEvidencePerProject: 200
         maxReportChars: 200000

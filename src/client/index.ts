@@ -3,7 +3,7 @@
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import deepResearchRemote from '@deepseek-ai/dsh-deepresearch/remote'
 import type { TypeRTClientRemote } from '@deepseek-ai/dsh-type-meta'
-import type { ResearchProject, ResearchStartRequest } from '../types.ts'
+import type { ResearchDeleteResult, ResearchProject, ResearchStartRequest } from '../types.ts'
 import { ResearchView } from './ResearchView.tsx'
 import type { ResearchViewApi } from './view-types.ts'
 
@@ -33,7 +33,13 @@ export async function apply(ctx: ClientContext): Promise<() => Promise<void>> {
     label: () => '深度研究',
     inject: (): ResearchViewApi => ({
       list: async query => (await ctx.remote.deepResearch.list({ ...(query === '' ? {} : { query }) })).projects,
+      get: async id => await ctx.remote.deepResearch.get({ id }),
       start: async (request: ResearchStartRequest): Promise<ResearchProject> => await ctx.remote.deepResearch.start(request),
+      updatePlan: async request => await ctx.remote.deepResearch.updatePlan(request),
+      confirmPlan: async id => await ctx.remote.deepResearch.confirmPlan({ id }),
+      complete: async request => await ctx.remote.deepResearch.complete(request),
+      fail: async (id, reason, aborted) => await ctx.remote.deepResearch.fail({ id, reason, aborted }),
+      delete: async (id): Promise<ResearchDeleteResult> => await ctx.remote.deepResearch.delete({ id }),
     }),
   }, ResearchView))
   return disposeRemote

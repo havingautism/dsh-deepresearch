@@ -2,22 +2,32 @@
 import type {
   TypeRTRemoteContribution,
 } from '@deepseek-ai/dsh-type-meta'
-import type { ResearchCompleteRequest, ResearchEvidenceRequest, ResearchGetRequest, ResearchListRequest, ResearchListResult, ResearchProject, ResearchStartRequest } from '@deepseek-ai/dsh-deepresearch/types'
+import type { ResearchCompleteRequest, ResearchConfirmRequest, ResearchDeleteRequest, ResearchDeleteResult, ResearchEvidenceRequest, ResearchFailRequest, ResearchGetRequest, ResearchListRequest, ResearchListResult, ResearchPlanUpdateRequest, ResearchProject, ResearchQuestionUpdateRequest, ResearchStartRequest } from '@deepseek-ai/dsh-deepresearch/types'
 
 declare module '@deepseek-ai/dsh-type-meta' {
   interface TypeRTRemoteNamespace$646565705265736561726368 {
     addEvidence: (request: ResearchEvidenceRequest) => Promise<ResearchProject>
     complete: (request: ResearchCompleteRequest) => Promise<ResearchProject>
+    confirmPlan: (request: ResearchConfirmRequest) => Promise<ResearchProject>
+    delete: (request: ResearchDeleteRequest) => Promise<ResearchDeleteResult>
+    fail: (request: ResearchFailRequest) => Promise<ResearchProject>
     get: (request: ResearchGetRequest) => Promise<ResearchProject | null>
     list: (request: ResearchListRequest) => Promise<ResearchListResult>
     start: (request: ResearchStartRequest) => Promise<ResearchProject>
+    updatePlan: (request: ResearchPlanUpdateRequest) => Promise<ResearchProject>
+    updateQuestion: (request: ResearchQuestionUpdateRequest) => Promise<ResearchProject>
   }
   interface TypeRTRemoteMap {
     'deepResearch/addEvidence': (request: ResearchEvidenceRequest) => Promise<ResearchProject>
     'deepResearch/complete': (request: ResearchCompleteRequest) => Promise<ResearchProject>
+    'deepResearch/confirmPlan': (request: ResearchConfirmRequest) => Promise<ResearchProject>
+    'deepResearch/delete': (request: ResearchDeleteRequest) => Promise<ResearchDeleteResult>
+    'deepResearch/fail': (request: ResearchFailRequest) => Promise<ResearchProject>
     'deepResearch/get': (request: ResearchGetRequest) => Promise<ResearchProject | null>
     'deepResearch/list': (request: ResearchListRequest) => Promise<ResearchListResult>
     'deepResearch/start': (request: ResearchStartRequest) => Promise<ResearchProject>
+    'deepResearch/updatePlan': (request: ResearchPlanUpdateRequest) => Promise<ResearchProject>
+    'deepResearch/updateQuestion': (request: ResearchQuestionUpdateRequest) => Promise<ResearchProject>
   }
   interface TypeRTRemoteNamespaceMap {
     'deepResearch': TypeRTRemoteNamespace$646565705265736561726368
