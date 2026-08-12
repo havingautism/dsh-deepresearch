@@ -1,0 +1,1 @@
+{"version":3,"file":"typert.remote-client.d.ts","names":["addEvidence","complete","get","list","start"],"sources":["../src/index.ts"],"sourcesContent":[null],"mappings":";;;;;;;;IAqJEA,W;IA0BAC,Q;IA5DAC,G;IAbAC,I;IAoBAC,K;;;IA2BAJ,0B;IA0BAC,uB;IA5DAC,kB;IAbAC,mB;IAoBAC,oB","ignoreList":[]}
