@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-deepresearch",
-  "description": "Durable evidence-first deep-research workflow over composed Web and subagent capabilities",
+  "description": "Independent evidence-first research workflow with durable state and its own Web view",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -24,7 +24,11 @@
   "dsh": {
     "bundle": { "patch": "./cordis.patch.yml" },
     "client": {
-      "inject": ["@deepseek-ai/dsh-api-remotes"],
+      "inject": [
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ],
       "platform": "web"
     }
   },
@@ -36,11 +40,15 @@
     "@deepseek-ai/cordis": "*",
     "@deepseek-ai/schemastery": "*",
     "@deepseek-ai/dsh-api-remotes": "*",
+    "@deepseek-ai/dsh-client-runtime": "*",
+    "@deepseek-ai/dsh-client-ui-conversation": "*",
+    "@deepseek-ai/dsh-client-ui-slots": "*",
     "@deepseek-ai/dsh-invariants": "*",
     "@deepseek-ai/dsh-storage-domain": "*",
     "@deepseek-ai/dsh-system-prompt": "*",
     "@deepseek-ai/dsh-tools": "*",
-    "@deepseek-ai/dsh-type-meta": "*"
+    "@deepseek-ai/dsh-type-meta": "*",
+    "react": "^18.2.0"
   },
   "dependencies": {
     "zod": "^4.4.3"

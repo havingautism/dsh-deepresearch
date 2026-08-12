@@ -1,5 +1,5 @@
 /** Client mount for the deep-research Remote contribution. */
-import type { Context } from '@deepseek-ai/cordis';
+import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client';
 import type { TypeRTClientRemote } from '@deepseek-ai/dsh-type-meta';
 export type {} from '@deepseek-ai/dsh-deepresearch/remote';
 declare module '@deepseek-ai/cordis' {
@@ -8,12 +8,12 @@ declare module '@deepseek-ai/cordis' {
         remote: TypeRTClientRemote;
     }
 }
-/** Required service: the Web profile's typed Remote client. */
+/** Required services: the typed Remote client and conversation-view registry. */
 export declare const inject: string[];
 /**
- * Mount the deep-research Remote namespace into the Web client.
- * @param ctx - Client Cordis root carrying the typed Remote service.
+ * Mount the deep-research Remote namespace and its conversation view.
+ * @param ctx - Web client root carrying Remote and slot services.
  * @returns disposer after the namespace is ready.
  */
-export declare function apply(ctx: Context): Promise<() => Promise<void>>;
+export declare function apply(ctx: ClientContext): Promise<() => Promise<void>>;
 //# sourceMappingURL=index.d.ts.map
