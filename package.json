@@ -8,7 +8,7 @@
   "types": "lib/types/index.d.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dsh-external/dsh-deepresearch.git"
+    "url": "git+https://github.com/havingautism/dsh-deepresearch.git"
   },
   "exports": {
     ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" },

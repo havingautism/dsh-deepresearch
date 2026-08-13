@@ -19,7 +19,7 @@
 单独安装本组合包：
 
 ```sh
-dsh plugin --profile web add github:dsh-external/dsh-deepresearch
+dsh plugin --profile web add github:havingautism/dsh-deepresearch
 dsh web
 ```
 
