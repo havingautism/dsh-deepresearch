@@ -6,11 +6,11 @@ export declare const researchCriterionSchema: z.ZodObject<{
     id: z.ZodString;
     text: z.ZodString;
     status: z.ZodEnum<{
-        missing: "missing";
-        partial: "partial";
         covered: "covered";
-        conflicted: "conflicted";
+        partial: "partial";
         blocked: "blocked";
+        missing: "missing";
+        conflicted: "conflicted";
     }>;
     summary: z.ZodString;
     gap: z.ZodString;
@@ -21,22 +21,22 @@ export declare const researchQuestionSchema: z.ZodObject<{
     text: z.ZodString;
     dependsOn: z.ZodArray<z.ZodPipe<z.ZodString, z.ZodTransform<ResearchQuestionId, string>>>;
     status: z.ZodEnum<{
-        partial: "partial";
-        covered: "covered";
-        blocked: "blocked";
+        failed: "failed";
         pending: "pending";
         running: "running";
-        failed: "failed";
+        covered: "covered";
+        partial: "partial";
+        blocked: "blocked";
     }>;
     criteria: z.ZodArray<z.ZodObject<{
         id: z.ZodString;
         text: z.ZodString;
         status: z.ZodEnum<{
-            missing: "missing";
-            partial: "partial";
             covered: "covered";
-            conflicted: "conflicted";
+            partial: "partial";
             blocked: "blocked";
+            missing: "missing";
+            conflicted: "conflicted";
         }>;
         summary: z.ZodString;
         gap: z.ZodString;
@@ -72,7 +72,6 @@ export declare const researchProjectSchema: z.ZodObject<{
         deep: "deep";
     }>;
     phase: z.ZodEnum<{
-        failed: "failed";
         planning: "planning";
         awaiting_plan_confirm: "awaiting_plan_confirm";
         investigating: "investigating";
@@ -80,6 +79,7 @@ export declare const researchProjectSchema: z.ZodObject<{
         incomplete: "incomplete";
         writing: "writing";
         done: "done";
+        failed: "failed";
         aborted: "aborted";
     }>;
     planConfirmed: z.ZodBoolean;
@@ -88,22 +88,22 @@ export declare const researchProjectSchema: z.ZodObject<{
         text: z.ZodString;
         dependsOn: z.ZodArray<z.ZodPipe<z.ZodString, z.ZodTransform<ResearchQuestionId, string>>>;
         status: z.ZodEnum<{
-            partial: "partial";
-            covered: "covered";
-            blocked: "blocked";
+            failed: "failed";
             pending: "pending";
             running: "running";
-            failed: "failed";
+            covered: "covered";
+            partial: "partial";
+            blocked: "blocked";
         }>;
         criteria: z.ZodArray<z.ZodObject<{
             id: z.ZodString;
             text: z.ZodString;
             status: z.ZodEnum<{
-                missing: "missing";
-                partial: "partial";
                 covered: "covered";
-                conflicted: "conflicted";
+                partial: "partial";
                 blocked: "blocked";
+                missing: "missing";
+                conflicted: "conflicted";
             }>;
             summary: z.ZodString;
             gap: z.ZodString;

@@ -8,7 +8,7 @@ import Tools from '@deepseek-ai/dsh-tools'
 import Storage from '@deepseek-ai/dsh-storage'
 import * as StorageDomain from '@deepseek-ai/dsh-storage-domain'
 import * as StorageJson from '@deepseek-ai/dsh-storage-json'
-import { remoteMethods } from '@deepseek-ai/dsh-type-meta'
+import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
 import DeepResearch, { ResearchId } from '../src/index.ts'
 
 const contexts: Context[] = []
@@ -42,7 +42,7 @@ async function harness(root?: string): Promise<Context> {
 describe('Deep Research extension', () => {
   it('publishes its complete independent Remote and Tool surface', async () => {
     const ctx = await harness()
-    expect(ctx.deepResearch.typertGateway.namespace).toBe('deepResearch')
+    expect(ctx.deepResearch.typertRemote.namespace).toBe('deepResearch')
     expect(remoteMethods(ctx.deepResearch).map(marker => marker.method)).toEqual([
       'list', 'get', 'start', 'updatePlan', 'confirmPlan', 'addEvidence',
       'updateQuestion', 'complete', 'fail', 'delete',

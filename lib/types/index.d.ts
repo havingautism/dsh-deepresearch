@@ -4,7 +4,7 @@
  */
 import { Context, Service } from '@deepseek-ai/cordis';
 import s from '@deepseek-ai/schemastery';
-import { GatewayService } from '@deepseek-ai/dsh-type-meta';
+import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
 import type { ResearchCompleteRequest, ResearchConfirmRequest, ResearchDeleteRequest, ResearchDeleteResult, ResearchEvidenceRequest, ResearchFailRequest, ResearchGetRequest, ResearchListRequest, ResearchListResult, ResearchPlanUpdateRequest, ResearchProject, ResearchQuestionUpdateRequest, ResearchStartRequest } from './types.ts';
 export type * from './types.ts';
 export { ResearchEvidenceId, ResearchId, ResearchQuestionId } from './types.ts';
@@ -28,7 +28,7 @@ declare module '@deepseek-ai/cordis' {
     }
 }
 /** Durable Codemini-style Deep Research project service. */
-export declare class DeepResearchService extends GatewayService {
+export declare class DeepResearchService extends TypertRemoteService {
     private readonly config;
     static inject: string[];
     static Config: s<Config>;

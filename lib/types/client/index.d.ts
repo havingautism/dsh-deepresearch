@@ -1,11 +1,11 @@
 /** Client mount for the deep-research Remote contribution. */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client';
-import type { TypeRTClientRemote } from '@deepseek-ai/dsh-type-meta';
+import type { TypertClientRemote } from '@deepseek-ai/dsh-typert-protocol';
 export type {} from '@deepseek-ai/dsh-deepresearch/remote';
 declare module '@deepseek-ai/cordis' {
     interface Context {
         /** Generated Remote namespaces, including deep research. */
-        remote: TypeRTClientRemote;
+        remote: TypertClientRemote;
     }
 }
 /** Required services: the typed Remote client and conversation-view registry. */

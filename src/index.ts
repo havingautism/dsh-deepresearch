@@ -8,7 +8,7 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import s from '@deepseek-ai/schemastery'
 import type { KvTable } from '@deepseek-ai/dsh-storage-domain'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import { GatewayService, Remote } from '@deepseek-ai/dsh-type-meta'
+import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { deepResearchDomainSpec } from './spec.ts'
 import { ResearchEvidenceId, ResearchId, ResearchQuestionId } from './types.ts'
 import type {
@@ -41,7 +41,7 @@ declare module '@deepseek-ai/cordis' { interface Context { deepResearch: DeepRes
 const TEXT_OUTPUT = { type: 'object', additionalProperties: false, properties: { text: { type: 'string', required: true } } } as const
 
 /** Durable Codemini-style Deep Research project service. */
-export class DeepResearchService extends GatewayService {
+export class DeepResearchService extends TypertRemoteService {
   static inject = ['storageDomain', 'tools', 'systemPrompt']
   static Config: s<Config> = s.object({
     maxProjects: s.number().step(1).min(1).required(), maxQuestions: s.number().step(1).min(1).required(),
