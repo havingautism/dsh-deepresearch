@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-deepresearch",
-  "description": "Independent evidence-first research workflow with durable state and its own Web view",
-  "version": "0.1.0",
+  "description": "Evidence-first research workflow with durable state and a Web workspace",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "main": "lib/index.js",

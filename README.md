@@ -16,14 +16,14 @@
 
 ## 🚀 快速开始
 
-单独安装本组合包：
+安装插件：
 
 ```sh
 dsh plugin --profile web add github:havingautism/dsh-deepresearch
 dsh web
 ```
 
-打开“深度研究”标签页，创建项目、审阅计划，并在调查前确认。组合包 patch 显式设置项目、问题、标准、证据和报告上限。
+打开“深度研究”标签页，创建项目、审阅计划，并在调查前确认。插件 patch 显式设置项目、问题、标准、证据和报告上限。
 
 ## 模型体验
 
