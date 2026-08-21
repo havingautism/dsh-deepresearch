@@ -13,6 +13,8 @@ English | [中文](README.md)
 - 📊 Track question coverage, search/fetch budgets, limitations, and partial completion.
 - 📝 Save conclusions and a full or explicitly incomplete final report.
 - 🗂️ Search, filter, sort, resume, abort, or delete projects from the Web library.
+- ▶️ “Confirm & start” saves the current plan and immediately starts investigation in the current DSH session.
+- 🔄 The investigation view continuously synchronizes Remote state for evidence, coverage, and report progress.
 
 ## 🚀 Quick Start
 
@@ -23,7 +25,7 @@ dsh plugin --profile web add github:havingautism/dsh-deepresearch
 dsh web
 ```
 
-Open the `深度研究` tab, create a project, review its plan, and confirm it before investigation. The patch sets explicit limits for projects, questions, criteria, evidence, and reports.
+Open the `深度研究` tab, create a project, and review its plan. “Confirm & start” submits a project-addressed investigation prompt with every sub-question and acceptance criterion to the current DSH session. The model uses the Web and subagent capabilities installed in that profile and writes progress back to the workspace. The patch sets explicit limits for projects, questions, criteria, evidence, and reports.
 
 ## Model Experience
 
@@ -63,6 +65,6 @@ Tool definitions are stable while unchanged. New evidence arrives through later 
 
 ## Known Limitations and Deferred Work
 
-- The plugin records and validates orchestration state but does not schedule searches itself; installed Web or subagent capabilities perform investigation.
+- The plugin starts investigation through the current DSH session rather than a Codemini runner; Web and subagent capabilities installed in the profile perform the actual investigation.
 - Search and fetch budgets are planning metadata in this release; automatic consumption requires integrations from those capability providers.
 - Evidence is append-only. Correct a mistaken claim by starting a new project or deleting the project before relying on its report.

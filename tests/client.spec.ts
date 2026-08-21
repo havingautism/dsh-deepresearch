@@ -23,6 +23,11 @@ describe('Deep Research client mount', () => {
     }
     const ctx = {
       remote: { $mount: vi.fn(async () => disposeRemote) },
+      locale: {
+        register: vi.fn(() => vi.fn()),
+        bind: vi.fn(() => (key: string) => key),
+      },
+      effect: (callback: () => unknown) => callback(),
       inject: (deps: readonly string[], callback: (scope: typeof remoteCtx) => void) => {
         expect(deps).toEqual(['remote.deepResearch'])
         callback(remoteCtx)
