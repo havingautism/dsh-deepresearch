@@ -33,6 +33,7 @@ async function harness(root?: string, runnerEnabled = false, agents: unknown = {
   ctx.provide('agentDefaultModel', { currentSelection: () => ({ provider: 'test', model: 'test' }) } as never)
   await ctx.plugin(DeepResearch, {
     runnerEnabled,
+    runnerCwd: storageRoot,
     maxProjects: 2,
     maxQuestions: 4,
     maxCriteriaPerQuestion: 3,
@@ -164,7 +165,7 @@ describe('Deep Research extension', () => {
     await vi.waitFor(() => { expect(created).toHaveLength(1); expect(prompts).toHaveLength(1) })
     expect(project.phase).toBe('planning')
     expect(created[0]?.sessionId).toMatch(/^deepresearch-run-/)
-    expect(created[0]?.meta).toMatchObject({ origin: 'subagent', delegationDepth: 1 })
+    expect(created[0]?.meta).toMatchObject({ cwd: expect.stringContaining('dsh-deepresearch-test-'), origin: 'subagent', delegationDepth: 1 })
     expect(registeredTools).toEqual([
       'deep_research_get', 'deep_research_submit_plan', 'deep_research_add_evidence',
       'deep_research_update_coverage', 'deep_research_complete',

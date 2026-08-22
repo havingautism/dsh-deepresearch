@@ -4,6 +4,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
+import { resolve } from 'node:path'
 import { Context, Service } from '@deepseek-ai/cordis'
 import s from '@deepseek-ai/schemastery'
 import type { AgentHandle } from '@deepseek-ai/dsh-agent'
@@ -30,6 +31,8 @@ export { deepResearchDomainSpec, researchCriterionSchema, researchEvidenceSchema
 export interface Config {
   /** Whether project creation and confirmation start private DSH Agents. */
   readonly runnerEnabled: boolean
+  /** Workspace recorded on private research Agent sessions; relative paths resolve from the host launch directory. */
+  readonly runnerCwd: string
   /** Maximum durable research projects. */
   readonly maxProjects: number
   /** Maximum planned sub-questions in one project. */
@@ -60,6 +63,7 @@ export class DeepResearchService extends TypertRemoteService {
   static inject = ['storageDomain', 'tools', 'systemPrompt', 'agents', 'agentDefaultModel']
   static Config: s<Config> = s.object({
     runnerEnabled: s.boolean().required(),
+    runnerCwd: s.string().default(process.cwd()),
     maxProjects: s.number().step(1).min(1).required(), maxQuestions: s.number().step(1).min(1).required(),
     maxCriteriaPerQuestion: s.number().step(1).min(1).required(), maxEvidencePerProject: s.number().step(1).min(1).required(), maxReportChars: s.number().step(1).min(1).required(),
   })
@@ -251,7 +255,7 @@ export class DeepResearchService extends TypertRemoteService {
     if (phase === 'investigating' && !allowed.includes('web_search')) throw new Error('web_search is not available in this profile')
     const handle = await this.ctx.agents.create({
       sessionId: SessionId(`deepresearch-run-${randomUUID()}`),
-      meta: { origin: 'subagent', delegationDepth: 1 },
+      meta: { cwd: resolve(this.config.runnerCwd), origin: 'subagent', delegationDepth: 1 },
       agentOptions: { provider: selection.provider, model: selection.model },
       signal: run.controller.signal,
       setup: (agentCtx) => {

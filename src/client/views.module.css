@@ -162,6 +162,11 @@
 .planningIcon { display: grid; width: 44px; height: 44px; flex: none; place-items: center; border-radius: 12px; background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, transparent); color: var(--dsw-alias-state-business-primary); }
 .planningState h3 { margin: 1px 0 6px; font-size: 14px; }
 .planningState p { margin: 0; color: var(--dsw-alias-label-caption); font-size: 11px; line-height: 1.65; }
+.planFailure { display: grid; gap: 8px; padding: 20px; border: 1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary) 24%, var(--dsw-alias-border-l1)); border-radius: 16px; background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 6%, transparent); }
+.planFailure h3, .planFailure p { margin: 0; }
+.planFailure h3 { color: var(--dsw-alias-state-error-primary); font-size: 14px; }
+.planFailure p { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 1.6; }
+.planFailure code { overflow-wrap: anywhere; color: var(--dsw-alias-label-caption); font: 11px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; }
 .spinner { flex: none; animation: research-spin .8s linear infinite; }
 .runningBanner { display: flex; align-items: center; gap: 9px; color: var(--dsw-alias-label-secondary); font-size: 11px; }
 @keyframes research-spin { to { transform: rotate(360deg); } }

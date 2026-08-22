@@ -83,6 +83,8 @@ export type DeepResearchKey =
   | 'plan.goal'
   | 'plan.constraints'
   | 'plan.criteria'
+  | 'plan.failedTitle'
+  | 'plan.failedHint'
   // metrics
   | 'metric.subQuestions'
   | 'metric.evidence'
@@ -204,6 +206,8 @@ export const zh: Record<DeepResearchKey, string> = {
   'plan.goal': '研究目标',
   'plan.constraints': '约束',
   'plan.criteria': '子问题与验收标准',
+  'plan.failedTitle': '研究计划生成失败',
+  'plan.failedHint': '后台规划 Agent 未能提交计划。查看下方错误后删除该项目并重新创建。',
   'metric.subQuestions': '子问题',
   'metric.evidence': '证据',
   'metric.searchBudget': '检索预算',
@@ -312,6 +316,8 @@ export const en: Record<DeepResearchKey, string> = {
   'plan.goal': 'Research goal',
   'plan.constraints': 'Constraints',
   'plan.criteria': 'Sub-questions & acceptance criteria',
+  'plan.failedTitle': 'Research plan generation failed',
+  'plan.failedHint': 'The background planning agent did not submit a plan. Review the error below, then delete this project and create it again.',
   'metric.subQuestions': 'Sub-questions',
   'metric.evidence': 'Evidence',
   'metric.searchBudget': 'Search budget',

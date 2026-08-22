@@ -63,4 +63,21 @@ describe('Deep Research view', () => {
     expect(inputActions.submit).not.toHaveBeenCalled()
     expect(await screen.findByText('调查看板')).toBeTruthy()
   })
+
+  it('keeps a failed planning run on the plan step and shows its runner error', async () => {
+    const failed: ResearchProject = {
+      id: ResearchId('research-plan-failed'), title: '🔬 失败计划', question: '为什么失败？', goal: '', constraints: '', seedText: '', depth: 'standard', phase: 'failed', planConfirmed: false,
+      questions: [], evidence: [], conclusions: [], limitations: ['Runner failed: prompt variable "{{cwd}}" has no value'], report: null,
+      budget: { maxSearches: 18, maxFetches: 14, searchesUsed: 0, fetchesUsed: 0 }, createdAt: 1, updatedAt: 2,
+    }
+    const api = { list: vi.fn(async () => [failed]), get: vi.fn(async () => failed), delete: vi.fn() } as unknown as ResearchViewApi
+
+    render(<ResearchView {...props(api)} />)
+    fireEvent.click(await screen.findByRole('button', { name: '打开研究：🔬 失败计划' }))
+
+    expect(screen.getByRole('button', { name: '1 计划' }).getAttribute('data-active')).toBe('true')
+    expect(screen.getByRole('button', { name: '2 调查' }).hasAttribute('disabled')).toBe(true)
+    expect(screen.getByText('研究计划生成失败')).toBeTruthy()
+    expect(screen.getByText(/prompt variable/)).toBeTruthy()
+  })
 })

@@ -13,6 +13,8 @@ export { deepResearchDomainSpec, researchCriterionSchema, researchEvidenceSchema
 export interface Config {
     /** Whether project creation and confirmation start private DSH Agents. */
     readonly runnerEnabled: boolean;
+    /** Workspace recorded on private research Agent sessions; relative paths resolve from the host launch directory. */
+    readonly runnerCwd: string;
     /** Maximum durable research projects. */
     readonly maxProjects: number;
     /** Maximum planned sub-questions in one project. */
@@ -112,3 +114,4 @@ export declare class DeepResearchService extends TypertRemoteService {
     private requireTable;
 }
 export default DeepResearchService;
+//# sourceMappingURL=index.d.ts.map
