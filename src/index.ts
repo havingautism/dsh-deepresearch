@@ -9,6 +9,7 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import s from '@deepseek-ai/schemastery'
 import type { AgentHandle } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
+import type {} from '@deepseek-ai/dsh-agent-presets'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { KvTable } from '@deepseek-ai/dsh-storage-domain'
@@ -60,7 +61,7 @@ type RunnerPhase = 'planning' | 'investigating'
 
 /** Durable Codemini-style Deep Research project service. */
 export class DeepResearchService extends TypertRemoteService {
-  static inject = ['storageDomain', 'tools', 'systemPrompt', 'agents', 'agentDefaultModel']
+  static inject = ['storageDomain', 'tools', 'systemPrompt', 'agents', 'agentDefaultModel', 'agentPresets']
   static Config: s<Config> = s.object({
     runnerEnabled: s.boolean().required(),
     runnerCwd: s.string().default(process.cwd()),
@@ -250,15 +251,16 @@ export class DeepResearchService extends TypertRemoteService {
 
   private async runProject(id: ResearchId, phase: RunnerPhase, run: ActiveResearchRun): Promise<void> {
     const selection = this.ctx.agentDefaultModel.currentSelection()
-    const inherited = new Set(this.ctx.tools.schemas().map(schema => schema.name))
-    const allowed = ['web_search', 'web_fetch', 'subagent'].filter(name => inherited.has(name))
-    if (phase === 'investigating' && !allowed.includes('web_search')) throw new Error('web_search is not available in this profile')
     const handle = await this.ctx.agents.create({
       sessionId: SessionId(`deepresearch-run-${randomUUID()}`),
       meta: { cwd: resolve(this.config.runnerCwd), origin: 'subagent', delegationDepth: 1 },
       agentOptions: { provider: selection.provider, model: selection.model },
       signal: run.controller.signal,
-      setup: (agentCtx) => {
+      setup: async (agentCtx) => {
+        await this.ctx.agentPresets.mount(agentCtx, 'standard')
+        const inherited = new Set(this.ctx.tools.schemas(agentCtx.agent).map(schema => schema.name))
+        const allowed = ['web_search', 'web_fetch', 'subagent'].filter(name => inherited.has(name))
+        if (phase === 'investigating' && !allowed.includes('web_search')) throw new Error('web_search is not available in this profile')
         agentCtx.tools.restrict({ allow: allowed })
         this.registerRunnerTools(agentCtx)
         agentCtx.systemPrompt.section({
