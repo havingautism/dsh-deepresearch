@@ -144,3 +144,4 @@ export declare const deepResearchDomainSpec: {
         projects: import("@deepseek-ai/dsh-storage-domain").DomainTableSpec<ResearchId, import("./types.ts").ResearchProject>;
     };
 };
+//# sourceMappingURL=spec.d.ts.map
