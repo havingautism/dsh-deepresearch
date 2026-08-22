@@ -1,0 +1,1 @@
+{"version":3,"file":"client-face.d.ts","sourceRoot":"","sources":["../../../src/client/client-face.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,eAAe,EAAE,MAAM,iBAAiB,CAAA;AACtD,OAAO,KAAK,EAAE,mBAAmB,EAAE,MAAM,eAAe,CAAA;AAExD,kEAAkE;AAClE,MAAM,WAAW,sBAAsB;IACrC,QAAQ,CAAC,GAAG,EAAE,eAAe,CAAA;IAC7B,QAAQ,CAAC,KAAK,EAAE,mBAAmB,CAAA;CACpC"}

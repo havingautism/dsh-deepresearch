@@ -1,0 +1,1 @@
+{"version":3,"file":"ui-store.d.ts","sourceRoot":"","sources":["../../../src/client/ui-store.ts"],"names":[],"mappings":"AAAA,8EAA8E;AAE9E,MAAM,WAAW,mBAAmB;IAClC,OAAO,IAAI,OAAO,CAAA;IAClB,OAAO,CAAC,IAAI,EAAE,OAAO,GAAG,IAAI,CAAA;IAC5B,SAAS,CAAC,QAAQ,EAAE,MAAM,IAAI,GAAG,MAAM,IAAI,CAAA;CAC5C;AAED,8EAA8E;AAC9E,wBAAgB,yBAAyB,IAAI,mBAAmB,CAe/D"}

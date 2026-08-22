@@ -1,5 +1,6 @@
 .shell {
   box-sizing: border-box;
+  flex: 1;
   height: 100%;
   min-height: 0;
   overflow: auto;
@@ -7,12 +8,16 @@
   background: var(--dsw-alias-bg-base);
 }
 
-:global([data-conversation-scroll]:has([data-deepresearch-view])) > :global([data-composer-seat]) { display: none; }
-
 .content,
 .workspace {
   width: min(1540px, 100%);
   margin-inline: auto;
+}
+
+.libraryTopBar {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 8px;
 }
 
 .content { box-sizing: border-box; padding: 24px clamp(18px, 3vw, 40px) 48px; }
@@ -225,7 +230,7 @@
 .evidenceCard blockquote { padding-left: 9px; border-left: 2px solid var(--dsw-alias-border-l1); }
 .evidenceCard a { color: var(--dsw-alias-label-secondary); font-size: 10px; text-decoration: none; }
 .evidenceCard a:hover { text-decoration: underline; }
-.reportDocument { max-width: 860px; white-space: pre-wrap; color: var(--dsw-alias-label-primary); font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
+.reportDocument { max-width: 860px; color: var(--dsw-alias-label-primary); overflow-wrap: anywhere; }
 .reportPending { display: flex; min-height: 160px; align-items: center; gap: 10px; color: var(--dsw-alias-label-caption); font-size: 12px; }
 .reportLimitations { padding-top: 18px; border-top: 1px solid var(--dsw-alias-border-l1); }
 .reportLimitations h4 { margin: 0 0 8px; font-size: 12px; }

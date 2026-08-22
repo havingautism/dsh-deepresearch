@@ -17,6 +17,8 @@ export type DeepResearchKey =
   | 'view.deepResearch'
   // library
   | 'library.title'
+  | 'library.back'
+  | 'library.backAria'
   | 'library.projectCount'
   | 'library.filterAria'
   | 'filter.all'
@@ -147,6 +149,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 export const zh: Record<DeepResearchKey, string> = {
   'view.deepResearch': '深度研究',
   'library.title': '研究资料库',
+  'library.back': '对话',
+  'library.backAria': '返回对话',
   'library.projectCount': '{count} 个研究项目',
   'library.filterAria': '研究状态筛选',
   'filter.all': '全部',
@@ -257,6 +261,8 @@ export const zh: Record<DeepResearchKey, string> = {
 export const en: Record<DeepResearchKey, string> = {
   'view.deepResearch': 'Deep Research',
   'library.title': 'Research Library',
+  'library.back': 'Chat',
+  'library.backAria': 'Back to chat',
   'library.projectCount': '{count} research projects',
   'library.filterAria': 'Filter by research status',
   'filter.all': 'All',

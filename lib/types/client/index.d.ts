@@ -8,10 +8,10 @@ declare module '@deepseek-ai/cordis' {
         remote: TypertClientRemote;
     }
 }
-/** Required services: the typed Remote client, conversation-view registry, and locale service. */
+/** Required services: the typed Remote client, slot registry, and locale service. */
 export declare const inject: string[];
 /**
- * Mount the deep-research Remote namespace and its conversation view.
+ * Mount the deep-research Remote namespace and its global sidebar/overlay surfaces.
  * @param ctx - Web client root carrying Remote, slot, and locale services.
  * @returns disposer after the namespace is ready.
  */
