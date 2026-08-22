@@ -15,6 +15,7 @@ English | [中文](README.md)
 - 🗂️ Search, filter, sort, resume, abort, or delete projects from the Web library.
 - 🤖 Project creation starts a private DSH planning Agent; “Confirm & start” launches a separate investigation Agent without using the normal chat session.
 - 🔄 The research view refreshes continuously while running and shows search budgets, questions, evidence, coverage, and report progress.
+- ✨ Match Codemini's research modal, loading motion, and context-specific button shapes.
 
 ## 🚀 Quick Start
 
