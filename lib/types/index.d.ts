@@ -11,6 +11,8 @@ export { ResearchEvidenceId, ResearchId, ResearchQuestionId } from './types.ts';
 export { deepResearchDomainSpec, researchCriterionSchema, researchEvidenceSchema, researchProjectSchema, researchQuestionSchema } from './spec.ts';
 /** Required project, evidence, and report limits. */
 export interface Config {
+    /** Whether project creation and confirmation start private DSH Agents. */
+    readonly runnerEnabled: boolean;
     /** Maximum durable research projects. */
     readonly maxProjects: number;
     /** Maximum planned sub-questions in one project. */
@@ -34,9 +36,10 @@ export declare class DeepResearchService extends TypertRemoteService {
     static Config: s<Config>;
     private table?;
     private mutationTail;
+    private readonly activeRuns;
     /** @param ctx - Host context carrying storage, prompt, and Tool registries. @param config - Project and content limits. */
     constructor(ctx: Context, config: Config);
-    /** Open storage and publish workflow guidance and Tools. */
+    /** Open storage and install runner teardown. */
     protected [Service.init](): Promise<void>;
     /**
      * List projects matching optional text and phase filters.
@@ -98,11 +101,14 @@ export declare class DeepResearchService extends TypertRemoteService {
      * @returns whether the project existed.
      */
     delete(request: ResearchDeleteRequest): Promise<ResearchDeleteResult>;
-    private registerTools;
+    private registerRunnerTools;
+    private launch;
+    private runProject;
+    private stopRun;
+    private bumpBudget;
     private buildQuestions;
     private update;
     private enqueue;
     private requireTable;
 }
 export default DeepResearchService;
-//# sourceMappingURL=index.d.ts.map

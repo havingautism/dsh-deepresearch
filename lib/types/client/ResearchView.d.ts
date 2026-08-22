@@ -14,4 +14,3 @@ type ResearchViewProps = ConvViewProps & InjectFace<ResearchViewApi> & {
 /** Render the research library, editable plan, investigation evidence, and report. */
 export declare function ResearchView({ t, ...api }: ResearchViewProps): import("react").JSX.Element;
 export {};
-//# sourceMappingURL=ResearchView.d.ts.map

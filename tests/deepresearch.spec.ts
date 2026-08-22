@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import Tools from '@deepseek-ai/dsh-tools'
@@ -19,7 +19,7 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
 })
 
-async function harness(root?: string): Promise<Context> {
+async function harness(root?: string, runnerEnabled = false, agents: unknown = { create: () => Promise.reject(new Error('runner disabled in unit harness')) }): Promise<Context> {
   const storageRoot = root ?? await mkdtemp(join(tmpdir(), 'dsh-deepresearch-test-'))
   if (root === undefined) roots.push(storageRoot)
   const ctx = new Context()
@@ -29,7 +29,10 @@ async function harness(root?: string): Promise<Context> {
   await ctx.plugin(Storage)
   await ctx.plugin(StorageJson, { root: storageRoot })
   await ctx.plugin(StorageDomain, { backend: 'json' })
+  ctx.provide('agents', agents as never)
+  ctx.provide('agentDefaultModel', { currentSelection: () => ({ provider: 'test', model: 'test' }) } as never)
   await ctx.plugin(DeepResearch, {
+    runnerEnabled,
     maxProjects: 2,
     maxQuestions: 4,
     maxCriteriaPerQuestion: 3,
@@ -40,17 +43,14 @@ async function harness(root?: string): Promise<Context> {
 }
 
 describe('Deep Research extension', () => {
-  it('publishes its complete independent Remote and Tool surface', async () => {
+  it('publishes its complete Remote surface without leaking runner Tools into chat', async () => {
     const ctx = await harness()
     expect(ctx.deepResearch.typertRemote.namespace).toBe('deepResearch')
     expect(remoteMethods(ctx.deepResearch).map(marker => marker.method)).toEqual([
       'list', 'get', 'start', 'updatePlan', 'confirmPlan', 'addEvidence',
       'updateQuestion', 'complete', 'fail', 'delete',
     ])
-    expect(ctx.tools.schemas().map(schema => schema.name)).toEqual([
-      'deep_research_start', 'deep_research_list', 'deep_research_confirm_plan',
-      'deep_research_add_evidence', 'deep_research_update_coverage', 'deep_research_complete',
-    ])
+    expect(ctx.tools.schemas().map(schema => schema.name)).toEqual([])
   })
 
   it('moves a reviewed plan through evidence and coverage to a report', async () => {
@@ -127,5 +127,51 @@ describe('Deep Research extension', () => {
     expect(second.deepResearch.get({ id: research.id })).toMatchObject({ phase: 'aborted', goal: 'Verify durable restoration.' })
     expect(second.deepResearch.get({ id: ResearchId('missing') })).toBeNull()
     await expect(second.deepResearch.delete({ id: research.id })).resolves.toEqual({ deleted: true })
+  })
+
+  it('runs planning in a private Agent scope and cancellation drains that run', async () => {
+    const created: Array<Parameters<Context['agents']['create']>[0]> = []
+    const registeredTools: string[] = []
+    const prompts: string[] = []
+    let resolveIdle: (() => void) | undefined
+    const idle = new Promise<void>(resolve => { resolveIdle = resolve })
+    const agentCtx = {
+      tools: {
+        schemas: () => [],
+        restrict: () => () => undefined,
+        register: (tool: { name: string }) => { registeredTools.push(tool.name); return () => undefined },
+      },
+      systemPrompt: { section: () => () => undefined },
+      on: () => () => undefined,
+    } as unknown as Context
+    const agents = {
+      create: async (options: Parameters<Context['agents']['create']>[0]) => {
+        created.push(options)
+        await options.setup?.(agentCtx)
+        return {
+          agent: {
+            followup: (message: { content: Array<{ type: string; text?: string }> }) => { prompts.push(message.content.map(block => block.text ?? '').join('')) },
+            whenIdle: () => idle,
+            cancel: () => { resolveIdle?.() },
+          },
+          dispose: () => Promise.resolve(),
+        }
+      },
+    }
+    const ctx = await harness(undefined, true, agents)
+    const project = await ctx.deepResearch.start({ question: 'Plan privately', depth: 'quick', questions: [] })
+
+    await vi.waitFor(() => { expect(created).toHaveLength(1); expect(prompts).toHaveLength(1) })
+    expect(project.phase).toBe('planning')
+    expect(created[0]?.sessionId).toMatch(/^deepresearch-run-/)
+    expect(created[0]?.meta).toMatchObject({ origin: 'subagent', delegationDepth: 1 })
+    expect(registeredTools).toEqual([
+      'deep_research_get', 'deep_research_submit_plan', 'deep_research_add_evidence',
+      'deep_research_update_coverage', 'deep_research_complete',
+    ])
+    expect(prompts[0]).toContain(String(project.id))
+    expect(ctx.tools.schemas()).toEqual([])
+
+    await expect(ctx.deepResearch.fail({ id: project.id, reason: 'stop test runner', aborted: true })).resolves.toMatchObject({ phase: 'aborted' })
   })
 })

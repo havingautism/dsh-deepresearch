@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import React from 'react'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ResearchView } from '../src/client/ResearchView.tsx'
@@ -32,13 +33,11 @@ describe('Deep Research view', () => {
     await waitFor(() => { expect(start).toHaveBeenCalledOnce() })
     expect(start.mock.calls[0]?.[0]).toMatchObject({
       question: '验证插件是否可运行',
-      questions: expect.arrayContaining([
-        expect.objectContaining({ text: expect.stringContaining('验证插件是否可运行') }),
-      ]),
+      questions: [],
     })
   })
 
-  it('saves, confirms, and submits the investigation into the current DSH session', async () => {
+  it('saves and starts the private research runner without submitting chat input', async () => {
     inputActions.setDraft.mockClear(); inputActions.submit.mockClear()
     const draft: ResearchProject = {
       id: ResearchId('research-ui-flow'), title: '🔬 验证深度研究', question: 'DSH 插件如何完成深度研究？', goal: '给出有来源的结论', constraints: '优先官方来源', seedText: '', depth: 'standard', phase: 'awaiting_plan_confirm', planConfirmed: false,
@@ -57,11 +56,11 @@ describe('Deep Research view', () => {
     fireEvent.click(await screen.findByRole('button', { name: '打开研究：🔬 验证深度研究' }))
     fireEvent.click(screen.getByRole('button', { name: '确认并开始' }))
 
-    await waitFor(() => { expect(inputActions.submit).toHaveBeenCalledOnce() })
+    await waitFor(() => { expect(api.confirmPlan).toHaveBeenCalledOnce() })
     expect(api.updatePlan).toHaveBeenCalledOnce()
     expect(api.confirmPlan).toHaveBeenCalledWith(ResearchId('research-ui-flow'))
-    expect(inputActions.setDraft).toHaveBeenCalledWith(expect.stringContaining('deep_research_add_evidence'))
-    expect(inputActions.setDraft).toHaveBeenCalledWith(expect.stringContaining('Project ID: research-ui-flow'))
+    expect(inputActions.setDraft).not.toHaveBeenCalled()
+    expect(inputActions.submit).not.toHaveBeenCalled()
     expect(await screen.findByText('调查看板')).toBeTruthy()
   })
 })

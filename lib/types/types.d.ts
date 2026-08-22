@@ -172,4 +172,3 @@ export interface ResearchDeleteRequest {
 export interface ResearchDeleteResult {
     readonly deleted: boolean;
 }
-//# sourceMappingURL=types.d.ts.map

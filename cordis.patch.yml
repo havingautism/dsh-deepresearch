@@ -2,6 +2,7 @@
     - id: deepresearch
       name: '@deepseek-ai/dsh-deepresearch'
       config:
+        runnerEnabled: true
         maxProjects: 1000
         maxQuestions: 20
         maxCriteriaPerQuestion: 12

@@ -16,4 +16,3 @@ export declare const inject: string[];
  * @returns disposer after the namespace is ready.
  */
 export declare function apply(ctx: ClientContext): Promise<() => Promise<void>>;
-//# sourceMappingURL=index.d.ts.map

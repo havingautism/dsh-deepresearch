@@ -13,8 +13,8 @@
 - 📊 跟踪问题覆盖度、搜索与抓取预算、局限和部分完成状态。
 - 📝 保存结论，以及完整或明确标记为未完成的最终报告。
 - 🗂️ 在 Web 资料库中搜索、筛选、排序、恢复、中止或删除项目。
-- ▶️ “确认并开始”会保存当前计划，并通过 DSH 当前会话立即启动调查。
-- 🔄 调查页持续同步 DSH Remote 状态，实时显示证据、覆盖度和报告阶段。
+- 🤖 创建项目后由私有 DSH Agent 生成可审查计划；“确认并开始”再启动独立调查 Agent，不占用普通聊天会话。
+- 🔄 研究页在运行阶段持续刷新，实时显示检索预算、子问题、证据、覆盖度和报告阶段。
 
 ## 🚀 快速开始
 
@@ -25,7 +25,7 @@ dsh plugin --profile web add github:havingautism/dsh-deepresearch
 dsh web
 ```
 
-打开“深度研究”标签页，创建项目并审阅计划。点击“确认并开始”后，插件会把带有项目、子问题和验收标准的调查指令提交给当前 DSH 会话；模型继续使用该 profile 已安装的 Web 与 subagent 能力，并把进度写回研究工作区。插件 patch 显式设置项目、问题、标准、证据和报告上限。
+打开“深度研究”标签页并创建项目。插件会在后台建立仅供研究使用的 DSH Agent 来生成计划；页面持续刷新，计划生成后可编辑并确认。点击“确认并开始”会建立新的私有调查 Agent，使用该 profile 已安装的 Web 与 subagent 能力，并把每次检索、证据、覆盖状态和最终报告写回研究工作区。普通聊天不会收到研究 prompt、工具调用或模型输出。插件 patch 显式启用 runner，并设置项目、问题、标准、证据和报告上限。
 
 ## 模型体验
 
@@ -33,17 +33,13 @@ dsh web
 
 #### What the model sees
 
-插件激活期间，每个请求都会收到下面的研究工作流指引。
+只有插件创建的私有规划/调查 Agent 会收到对应阶段的研究工作流指引。
 
-##### 研究工作流指引
-
-```markdown
-For explicit deep research, create or resume a project before investigation. Refine and confirm its question plan, then use the composed Web and subagent tools. Save each source-backed claim against its sub-question and success criteria. Mark coverage honestly, retain limitations, and save the final report only after comparing accepted evidence. Never invent sources, evidence, coverage, or completion.
-```
+规划 Agent 只能读取指定项目并提交可审查计划；调查 Agent 只能处理同一项目，使用 Web 工具保存来源证据、更新覆盖度并提交带引用的报告。两者都禁止向普通聊天输出结果、虚构来源或跳过持久状态写入。
 
 #### Token effect
 
-插件激活期间每个请求承担固定的小额输入成本。
+固定输入成本只由私有研究 Agent 的请求承担；普通聊天请求不增加这段指引。
 
 #### KV Cache 影响
 
@@ -53,7 +49,7 @@ For explicit deep research, create or resume a project before investigation. Ref
 
 #### What the model sees
 
-模型会看到 `deep_research_start`、`deep_research_list`、`deep_research_confirm_plan`、`deep_research_add_evidence`、`deep_research_update_coverage` 和 `deep_research_complete`。Remote 客户端还可编辑草案计划、停止任务、读取完整项目和删除项目。
+私有研究 Agent 会看到阶段所需的 `deep_research_get`、`deep_research_submit_plan`、`deep_research_add_evidence`、`deep_research_update_coverage` 和 `deep_research_complete`。这些工具按 Agent scope 注册，不会泄漏到普通聊天。Remote 客户端负责创建、编辑、确认、停止、读取和删除项目。
 
 #### Token effect
 
@@ -65,6 +61,5 @@ For explicit deep research, create or resume a project before investigation. Ref
 
 ## 已知限制与后续工作
 
-- 插件通过当前 DSH 会话启动调查，不另建 Codemini runner；实际检索与并行调查由该 profile 已安装的 Web 或 subagent 能力执行。
-- 本版搜索与抓取预算属于计划元数据；自动扣减需要相应能力 provider 提供集成。
+- 运行中的私有 Agent 会随宿主进程停止；项目、证据和报告保持持久化，但进程重启后不会自动续跑中断的任务。
 - 证据只追加不编辑。错误论点应通过新项目重新调查，或在依赖报告前删除原项目。

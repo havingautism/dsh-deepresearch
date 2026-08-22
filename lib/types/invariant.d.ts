@@ -6,4 +6,3 @@ export declare const name = "deepresearch-invariant";
 export declare const inject: string[];
 /** Reserve this package's invariant ownership. */
 export declare const apply: (ctx: Context) => Promise<() => void>;
-//# sourceMappingURL=invariant.d.ts.map

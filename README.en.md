@@ -13,8 +13,8 @@ English | [中文](README.md)
 - 📊 Track question coverage, search/fetch budgets, limitations, and partial completion.
 - 📝 Save conclusions and a full or explicitly incomplete final report.
 - 🗂️ Search, filter, sort, resume, abort, or delete projects from the Web library.
-- ▶️ “Confirm & start” saves the current plan and immediately starts investigation in the current DSH session.
-- 🔄 The investigation view continuously synchronizes Remote state for evidence, coverage, and report progress.
+- 🤖 Project creation starts a private DSH planning Agent; “Confirm & start” launches a separate investigation Agent without using the normal chat session.
+- 🔄 The research view refreshes continuously while running and shows search budgets, questions, evidence, coverage, and report progress.
 
 ## 🚀 Quick Start
 
@@ -25,7 +25,7 @@ dsh plugin --profile web add github:havingautism/dsh-deepresearch
 dsh web
 ```
 
-Open the `深度研究` tab, create a project, and review its plan. “Confirm & start” submits a project-addressed investigation prompt with every sub-question and acceptance criterion to the current DSH session. The model uses the Web and subagent capabilities installed in that profile and writes progress back to the workspace. The patch sets explicit limits for projects, questions, criteria, evidence, and reports.
+Open the `深度研究` tab and create a project. The plugin creates a research-only DSH Agent to generate the plan while the page refreshes. Review or edit that plan, then choose “Confirm & start” to launch a new private investigation Agent. It uses the profile's Web and subagent capabilities and writes searches, evidence, coverage, and the final report back to the research workspace. The normal chat receives no research prompt, tool calls, or model output. The patch enables the runner and sets explicit limits for projects, questions, criteria, evidence, and reports.
 
 ## Model Experience
 
@@ -33,17 +33,13 @@ Open the `深度研究` tab, create a project, and review its plan. “Confirm &
 
 #### What the model sees
 
-Every active request receives the research workflow guidance below.
+Only the private planning and investigation Agents receive their phase-specific research guidance.
 
-##### Research workflow guidance
-
-```markdown
-For explicit deep research, create or resume a project before investigation. Refine and confirm its question plan, then use the composed Web and subagent tools. Save each source-backed claim against its sub-question and success criteria. Mark coverage honestly, retain limitations, and save the final report only after comparing accepted evidence. Never invent sources, evidence, coverage, or completion.
-```
+The planning Agent may only read the selected project and submit a reviewable plan. The investigation Agent stays on that project, uses Web tools, saves source evidence, updates coverage, and submits a cited report. Neither Agent may write into normal chat, invent sources, or bypass durable state updates.
 
 #### Token effect
 
-Small fixed input cost applies while the plugin is active.
+The fixed input cost applies only to private research Agent requests, not ordinary chat requests.
 
 #### KV Cache effect
 
@@ -53,7 +49,7 @@ The section remains prefix-stable while its text and registration scope are unch
 
 #### What the model sees
 
-The model sees `deep_research_start`, `deep_research_list`, `deep_research_confirm_plan`, `deep_research_add_evidence`, `deep_research_update_coverage`, and `deep_research_complete`. Remote clients additionally edit draft plans, stop runs, inspect full projects, and delete them.
+Private research Agents see the phase-appropriate `deep_research_get`, `deep_research_submit_plan`, `deep_research_add_evidence`, `deep_research_update_coverage`, and `deep_research_complete` tools. Agent-scoped registration keeps them out of normal chat. Remote clients create, edit, confirm, stop, inspect, and delete projects.
 
 #### Token effect
 
@@ -65,6 +61,5 @@ Tool definitions are stable while unchanged. New evidence arrives through later 
 
 ## Known Limitations and Deferred Work
 
-- The plugin starts investigation through the current DSH session rather than a Codemini runner; Web and subagent capabilities installed in the profile perform the actual investigation.
-- Search and fetch budgets are planning metadata in this release; automatic consumption requires integrations from those capability providers.
+- Private Agents stop with the Host process. Projects, evidence, and reports remain durable, but an interrupted run does not resume automatically after restart.
 - Evidence is append-only. Correct a mistaken claim by starting a new project or deleting the project before relying on its report.

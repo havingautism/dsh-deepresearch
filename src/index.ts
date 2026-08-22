@@ -6,6 +6,10 @@
 import { randomUUID } from 'node:crypto'
 import { Context, Service } from '@deepseek-ai/cordis'
 import s from '@deepseek-ai/schemastery'
+import type { AgentHandle } from '@deepseek-ai/dsh-agent'
+import type {} from '@deepseek-ai/dsh-agent-default-model'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import type { KvTable } from '@deepseek-ai/dsh-storage-domain'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
@@ -24,6 +28,8 @@ export { deepResearchDomainSpec, researchCriterionSchema, researchEvidenceSchema
 
 /** Required project, evidence, and report limits. */
 export interface Config {
+  /** Whether project creation and confirmation start private DSH Agents. */
+  readonly runnerEnabled: boolean
   /** Maximum durable research projects. */
   readonly maxProjects: number
   /** Maximum planned sub-questions in one project. */
@@ -40,27 +46,44 @@ declare module '@deepseek-ai/cordis' { interface Context { deepResearch: DeepRes
 
 const TEXT_OUTPUT = { type: 'object', additionalProperties: false, properties: { text: { type: 'string', required: true } } } as const
 
+interface ActiveResearchRun {
+  readonly phase: RunnerPhase
+  readonly controller: AbortController
+  handle?: AgentHandle
+  promise?: Promise<void>
+}
+
+type RunnerPhase = 'planning' | 'investigating'
+
 /** Durable Codemini-style Deep Research project service. */
 export class DeepResearchService extends TypertRemoteService {
-  static inject = ['storageDomain', 'tools', 'systemPrompt']
+  static inject = ['storageDomain', 'tools', 'systemPrompt', 'agents', 'agentDefaultModel']
   static Config: s<Config> = s.object({
+    runnerEnabled: s.boolean().required(),
     maxProjects: s.number().step(1).min(1).required(), maxQuestions: s.number().step(1).min(1).required(),
     maxCriteriaPerQuestion: s.number().step(1).min(1).required(), maxEvidencePerProject: s.number().step(1).min(1).required(), maxReportChars: s.number().step(1).min(1).required(),
   })
 
   private table?: KvTable<ResearchId, ResearchProject>
   private mutationTail: Promise<void> = Promise.resolve()
+  private readonly activeRuns = new Map<ResearchId, ActiveResearchRun>()
 
   /** @param ctx - Host context carrying storage, prompt, and Tool registries. @param config - Project and content limits. */
   constructor(ctx: Context, private readonly config: Config) { super(ctx, 'deepResearch') }
 
-  /** Open storage and publish workflow guidance and Tools. */
+  /** Open storage and install runner teardown. */
   protected async [Service.init](): Promise<void> {
     const domain = await this.ctx.storageDomain.open(deepResearchDomainSpec)
     this.ctx.effect(() => () => domain.close(), 'deepresearch.domainClose')
     this.table = domain.table('projects')
-    this.ctx.systemPrompt.section({ name: 'deepresearch', order: 170, text: 'For explicit deep research, create or resume a project before investigation. Refine and confirm its question plan, then use the composed Web and subagent tools. Save each source-backed claim against its sub-question and success criteria. Mark coverage honestly, retain limitations, and save the final report only after comparing accepted evidence. Never invent sources, evidence, coverage, or completion.' })
-    this.registerTools()
+    this.ctx.effect(() => async () => {
+      const runs = [...this.activeRuns.values()]
+      for (const run of runs) {
+        run.controller.abort()
+        run.handle?.agent.cancel({ kind: 'disposed' })
+      }
+      await Promise.allSettled(runs.map(run => run.promise))
+    }, 'deepresearch.runnerDrain')
   }
 
   /**
@@ -91,9 +114,11 @@ export class DeepResearchService extends TypertRemoteService {
   start(request: ResearchStartRequest): Promise<ResearchProject> {
     return this.enqueue(async () => {
       const table = this.requireTable(); if (table.size >= this.config.maxProjects) throw new RangeError(`deepresearch: project limit ${this.config.maxProjects} reached`)
-      const questions = this.buildQuestions(request.questions); const now = Date.now(); const id = ResearchId(`research-${randomUUID()}`)
-      const project = snapshot({ id, title: optionalText(request.title) || `🔬 ${requiredText(request.question, 'question').slice(0, 64)}`, question: requiredText(request.question, 'question'), goal: optionalText(request.goal), constraints: optionalText(request.constraints), seedText: optionalText(request.seedText), depth: request.depth, phase: 'awaiting_plan_confirm', planConfirmed: false, questions, evidence: [], conclusions: [], limitations: [], report: null, budget: budgetFor(request.depth), createdAt: now, updatedAt: now })
-      await table.put(id, project); return snapshot(project)
+      const questions = request.questions.length === 0 ? [] : this.buildQuestions(request.questions); const now = Date.now(); const id = ResearchId(`research-${randomUUID()}`)
+      const project = snapshot({ id, title: optionalText(request.title) || `🔬 ${requiredText(request.question, 'question').slice(0, 64)}`, question: requiredText(request.question, 'question'), goal: optionalText(request.goal), constraints: optionalText(request.constraints), seedText: optionalText(request.seedText), depth: request.depth, phase: this.config.runnerEnabled ? 'planning' : 'awaiting_plan_confirm', planConfirmed: false, questions, evidence: [], conclusions: [], limitations: [], report: null, budget: budgetFor(request.depth), createdAt: now, updatedAt: now })
+      await table.put(id, project)
+      if (this.config.runnerEnabled) this.launch(id, 'planning')
+      return snapshot(project)
     })
   }
 
@@ -116,7 +141,14 @@ export class DeepResearchService extends TypertRemoteService {
    * @returns the updated detached project.
    */
   @Remote('confirmPlan')
-  confirmPlan(request: ResearchConfirmRequest): Promise<ResearchProject> { return this.update(request.id, project => ({ ...project, planConfirmed: true, phase: 'investigating' })) }
+  async confirmPlan(request: ResearchConfirmRequest): Promise<ResearchProject> {
+    const project = await this.update(request.id, current => {
+      if (current.questions.length === 0) throw new Error(`deepresearch: project ${current.id} has no generated plan`)
+      return { ...current, planConfirmed: true, phase: 'investigating' }
+    })
+    if (this.config.runnerEnabled) this.launch(request.id, 'investigating')
+    return project
+  }
 
   /**
    * Attach one source-backed claim to a planned sub-question.
@@ -131,7 +163,7 @@ export class DeepResearchService extends TypertRemoteService {
       const question = project.questions.find(item => item.id === request.questionId); if (question === undefined) throw new Error(`deepresearch: question ${request.questionId} not found`)
       const criteria = new Set(question.criteria.map(item => item.id)); for (const id of request.criterionIds ?? []) if (!criteria.has(id)) throw new Error(`deepresearch: criterion ${id} not found`)
       const evidence: ResearchEvidence = { id: ResearchEvidenceId(`evidence-${randomUUID()}`), questionId: request.questionId, criterionIds: [...(request.criterionIds ?? [])], source: requiredText(request.source, 'source'), url: optionalText(request.url) || null, snippet: optionalText(request.snippet), claim: requiredText(request.claim, 'claim'), confidence: request.confidence, createdAt: Date.now() }
-      return { ...project, phase: 'investigating', evidence: [...project.evidence, evidence], budget: { ...project.budget, fetchesUsed: Math.min(project.budget.maxFetches, project.budget.fetchesUsed + (evidence.url === null ? 0 : 1)) } }
+      return { ...project, phase: 'investigating', evidence: [...project.evidence, evidence] }
     })
   }
 
@@ -144,7 +176,10 @@ export class DeepResearchService extends TypertRemoteService {
   updateQuestion(request: ResearchQuestionUpdateRequest): Promise<ResearchProject> {
     return this.update(request.id, project => {
       const index = project.questions.findIndex(item => item.id === request.questionId); if (index < 0) throw new Error(`deepresearch: question ${request.questionId} not found`)
-      const current = project.questions[index] as ResearchQuestion; const questions = [...project.questions]; questions[index] = { ...current, status: request.status, criteria: request.criteria ?? current.criteria }
+      const current = project.questions[index] as ResearchQuestion; const questions = [...project.questions]
+      const inferredCriterionStatus = request.status === 'covered' ? 'covered' : request.status === 'partial' ? 'partial' : request.status === 'blocked' || request.status === 'failed' ? 'blocked' : undefined
+      const criteria = request.criteria ?? (inferredCriterionStatus === undefined ? current.criteria : current.criteria.map(criterion => ({ ...criterion, status: inferredCriterionStatus })))
+      questions[index] = { ...current, status: request.status, criteria }
       const settled = questions.every(question => ['covered', 'partial', 'blocked'].includes(question.status))
       return { ...project, questions, phase: settled ? 'ready_for_report' : 'investigating' }
     })
@@ -170,7 +205,10 @@ export class DeepResearchService extends TypertRemoteService {
    * @returns the updated detached project.
    */
   @Remote('fail')
-  fail(request: ResearchFailRequest): Promise<ResearchProject> { return this.update(request.id, project => ({ ...project, phase: request.aborted === true ? 'aborted' : 'failed', limitations: normalizeList([...project.limitations, requiredText(request.reason, 'reason')]) })) }
+  fail(request: ResearchFailRequest): Promise<ResearchProject> {
+    this.stopRun(request.id)
+    return this.update(request.id, project => ({ ...project, phase: request.aborted === true ? 'aborted' : 'failed', limitations: normalizeList([...project.limitations, requiredText(request.reason, 'reason')]) }))
+  }
 
   /**
    * Delete a project; absence is a stable successful outcome.
@@ -178,15 +216,85 @@ export class DeepResearchService extends TypertRemoteService {
    * @returns whether the project existed.
    */
   @Remote('delete')
-  delete(request: ResearchDeleteRequest): Promise<ResearchDeleteResult> { return this.enqueue(async () => { const table = this.requireTable(); const deleted = table.get(request.id) !== undefined; if (deleted) await table.delete(request.id); return { deleted } }) }
+  delete(request: ResearchDeleteRequest): Promise<ResearchDeleteResult> { this.stopRun(request.id); return this.enqueue(async () => { const table = this.requireTable(); const deleted = table.get(request.id) !== undefined; if (deleted) await table.delete(request.id); return { deleted } }) }
 
-  private registerTools(): void {
-    this.ctx.tools.register(defineTool({ name: 'deep_research_start', description: 'Create a durable Deep Research project with explicit sub-questions and success criteria.', parameters: { title: { type: 'string' }, question: { type: 'string', required: true }, goal: { type: 'string' }, constraints: { type: 'string' }, seedText: { type: 'string' }, depth: { type: 'string', required: true, enum: ['quick', 'standard', 'deep'] }, questions: { type: 'array', required: true, items: { type: 'object', additionalProperties: false, properties: { text: { type: 'string', required: true }, criteria: { type: 'array', required: true, items: { type: 'string' } }, dependsOn: { type: 'array', items: { type: 'number' } } } } } }, output: { schema: TEXT_OUTPUT, render: (_args, value) => [{ type: 'text', text: value.text }] }, execute: async args => ({ text: projectSummary(await this.start(args)) }), presentCall: args => ({ card: 'generic', kind: 'edit', title: 'Plan deep research', rawInput: args.question }) }))
-    this.ctx.tools.register(defineTool({ name: 'deep_research_list', description: 'List durable research projects before resuming or starting duplicate work.', parameters: { query: { type: 'string' }, phase: { type: 'string', enum: ['planning', 'awaiting_plan_confirm', 'investigating', 'ready_for_report', 'incomplete', 'writing', 'done', 'failed', 'aborted'] } }, output: { schema: TEXT_OUTPUT, render: (_args, value) => [{ type: 'text', text: value.text }] }, execute: args => Promise.resolve({ text: this.list(args).projects.map(projectSummary).join('\n\n') || 'No research projects matched.' }), presentCall: args => ({ card: 'generic', kind: 'search', title: 'List research projects', rawInput: args.query ?? args.phase }) }))
-    this.ctx.tools.register(defineTool({ name: 'deep_research_confirm_plan', description: 'Confirm a reviewed project plan before gathering evidence.', parameters: { id: { type: 'string', required: true } }, output: { schema: TEXT_OUTPUT, render: (_args, value) => [{ type: 'text', text: value.text }] }, execute: async args => ({ text: projectSummary(await this.confirmPlan({ id: ResearchId(args.id) })) }), presentCall: args => ({ card: 'generic', kind: 'edit', title: 'Confirm research plan', rawInput: args.id }) }))
-    this.ctx.tools.register(defineTool({ name: 'deep_research_add_evidence', description: 'Attach a source-backed claim to one planned sub-question and its criteria.', parameters: { id: { type: 'string', required: true }, questionId: { type: 'string', required: true }, criterionIds: { type: 'array', items: { type: 'string' } }, source: { type: 'string', required: true }, url: { type: 'string' }, snippet: { type: 'string' }, claim: { type: 'string', required: true }, confidence: { type: 'string', required: true, enum: ['low', 'medium', 'high'] } }, output: { schema: TEXT_OUTPUT, render: (_args, value) => [{ type: 'text', text: value.text }] }, execute: async args => ({ text: projectSummary(await this.addEvidence({ ...args, id: ResearchId(args.id), questionId: ResearchQuestionId(args.questionId) })) }), presentCall: args => ({ card: 'generic', kind: 'search', title: 'Add research evidence', rawInput: args.source }) }))
-    this.ctx.tools.register(defineTool({ name: 'deep_research_update_coverage', description: 'Record reviewed question and success-criterion coverage.', parameters: { id: { type: 'string', required: true }, questionId: { type: 'string', required: true }, status: { type: 'string', required: true, enum: ['pending', 'running', 'covered', 'partial', 'blocked', 'failed'] } }, output: { schema: TEXT_OUTPUT, render: (_args, value) => [{ type: 'text', text: value.text }] }, execute: async args => ({ text: projectSummary(await this.updateQuestion({ id: ResearchId(args.id), questionId: ResearchQuestionId(args.questionId), status: args.status })) }), presentCall: args => ({ card: 'generic', kind: 'edit', title: 'Update research coverage', rawInput: args.questionId }) }))
-    this.ctx.tools.register(defineTool({ name: 'deep_research_complete', description: 'Save the evidence-based report, conclusions, and limitations.', parameters: { id: { type: 'string', required: true }, report: { type: 'string', required: true }, conclusions: { type: 'array', items: { type: 'string' } }, limitations: { type: 'array', items: { type: 'string' } }, partial: { type: 'boolean' } }, output: { schema: TEXT_OUTPUT, render: (_args, value) => [{ type: 'text', text: value.text }] }, execute: async args => ({ text: projectSummary(await this.complete({ ...args, id: ResearchId(args.id) })) }), presentCall: args => ({ card: 'generic', kind: 'edit', title: 'Complete deep research', rawInput: args.id }) }))
+  private registerRunnerTools(ctx: Context): void {
+    ctx.tools.register(defineTool({ name: 'deep_research_get', description: 'Read the exact Deep Research project, including question and criterion ids, evidence, and budgets.', parameters: { id: { type: 'string', required: true } }, output: { schema: TEXT_OUTPUT, render: (_args, value) => [{ type: 'text', text: value.text }] }, execute: args => Promise.resolve({ text: JSON.stringify(this.get({ id: ResearchId(args.id) })) }), presentCall: args => ({ card: 'generic', kind: 'search', title: 'Read research state', rawInput: args.id }) }))
+    ctx.tools.register(defineTool({ name: 'deep_research_submit_plan', description: 'Submit the generated plan for user review. This ends the planning run.', parameters: { id: { type: 'string', required: true }, goal: { type: 'string', required: true }, constraints: { type: 'string', required: true }, depth: { type: 'string', required: true, enum: ['quick', 'standard', 'deep'] }, questions: { type: 'array', required: true, items: { type: 'object', additionalProperties: false, properties: { text: { type: 'string', required: true }, criteria: { type: 'array', required: true, items: { type: 'string' } }, dependsOn: { type: 'array', items: { type: 'number' } } } } } }, output: { schema: TEXT_OUTPUT, render: (_args, value) => [{ type: 'text', text: value.text }] }, execute: async args => ({ text: projectSummary(await this.updatePlan({ ...args, id: ResearchId(args.id) })) }), presentCall: args => ({ card: 'generic', kind: 'edit', title: 'Submit research plan', rawInput: args.id }) }))
+    ctx.tools.register(defineTool({ name: 'deep_research_add_evidence', description: 'Attach a source-backed claim to one planned sub-question and its criteria.', parameters: { id: { type: 'string', required: true }, questionId: { type: 'string', required: true }, criterionIds: { type: 'array', items: { type: 'string' } }, source: { type: 'string', required: true }, url: { type: 'string' }, snippet: { type: 'string' }, claim: { type: 'string', required: true }, confidence: { type: 'string', required: true, enum: ['low', 'medium', 'high'] } }, output: { schema: TEXT_OUTPUT, render: (_args, value) => [{ type: 'text', text: value.text }] }, execute: async args => ({ text: projectSummary(await this.addEvidence({ ...args, id: ResearchId(args.id), questionId: ResearchQuestionId(args.questionId) })) }), presentCall: args => ({ card: 'generic', kind: 'search', title: 'Add research evidence', rawInput: args.source }) }))
+    ctx.tools.register(defineTool({ name: 'deep_research_update_coverage', description: 'Record reviewed question and success-criterion coverage.', parameters: { id: { type: 'string', required: true }, questionId: { type: 'string', required: true }, status: { type: 'string', required: true, enum: ['pending', 'running', 'covered', 'partial', 'blocked', 'failed'] } }, output: { schema: TEXT_OUTPUT, render: (_args, value) => [{ type: 'text', text: value.text }] }, execute: async args => ({ text: projectSummary(await this.updateQuestion({ id: ResearchId(args.id), questionId: ResearchQuestionId(args.questionId), status: args.status })) }), presentCall: args => ({ card: 'generic', kind: 'edit', title: 'Update research coverage', rawInput: args.questionId }) }))
+    ctx.tools.register(defineTool({ name: 'deep_research_complete', description: 'Save the evidence-based report, conclusions, and limitations.', parameters: { id: { type: 'string', required: true }, report: { type: 'string', required: true }, conclusions: { type: 'array', items: { type: 'string' } }, limitations: { type: 'array', items: { type: 'string' } }, partial: { type: 'boolean' } }, output: { schema: TEXT_OUTPUT, render: (_args, value) => [{ type: 'text', text: value.text }] }, execute: async args => ({ text: projectSummary(await this.complete({ ...args, id: ResearchId(args.id) })) }), presentCall: args => ({ card: 'generic', kind: 'edit', title: 'Complete deep research', rawInput: args.id }) }))
+  }
+
+  private launch(id: ResearchId, phase: RunnerPhase): void {
+    const active = this.activeRuns.get(id)
+    if (active !== undefined) {
+      if (active.phase !== phase) void active.promise?.then(() => { this.launch(id, phase) })
+      return
+    }
+    const run: ActiveResearchRun = { phase, controller: new AbortController() }
+    this.activeRuns.set(id, run)
+    run.promise = this.runProject(id, phase, run).catch(async (cause: unknown) => {
+      if (run.controller.signal.aborted || this.requireTable().get(id) === undefined) return
+      const reason = cause instanceof Error ? cause.message : String(cause)
+      await this.update(id, project => ({ ...project, phase: 'failed', limitations: normalizeList([...project.limitations, `Runner failed: ${reason}`]) }))
+    }).finally(async () => {
+      this.activeRuns.delete(id)
+      if (run.handle !== undefined) await run.handle.dispose()
+    })
+  }
+
+  private async runProject(id: ResearchId, phase: RunnerPhase, run: ActiveResearchRun): Promise<void> {
+    const selection = this.ctx.agentDefaultModel.currentSelection()
+    const inherited = new Set(this.ctx.tools.schemas().map(schema => schema.name))
+    const allowed = ['web_search', 'web_fetch', 'subagent'].filter(name => inherited.has(name))
+    if (phase === 'investigating' && !allowed.includes('web_search')) throw new Error('web_search is not available in this profile')
+    const handle = await this.ctx.agents.create({
+      sessionId: SessionId(`deepresearch-run-${randomUUID()}`),
+      meta: { origin: 'subagent', delegationDepth: 1 },
+      agentOptions: { provider: selection.provider, model: selection.model },
+      signal: run.controller.signal,
+      setup: (agentCtx) => {
+        agentCtx.tools.restrict({ allow: allowed })
+        this.registerRunnerTools(agentCtx)
+        agentCtx.systemPrompt.section({
+          name: 'deepresearch:runner',
+          order: 10_000,
+          text: runnerSystemPrompt(phase),
+        })
+        agentCtx.on('tools/post-execute', async (exec, result, next) => {
+          if (!result.isError && (exec.name === 'web_search' || exec.name === 'web_fetch')) {
+            await this.bumpBudget(id, exec.name)
+          }
+          return next()
+        })
+      },
+    })
+    run.handle = handle
+    if (run.controller.signal.aborted) return
+    handle.agent.followup(createUserMessage({ content: [{ type: 'text', text: runnerPrompt(id, phase) }], source: { kind: 'user' } }))
+    await handle.agent.whenIdle()
+    if (run.controller.signal.aborted) return
+    const project = this.get({ id })
+    if (project === null) return
+    if (phase === 'planning' && project.phase === 'planning') throw new Error('the planning agent stopped before submitting a plan')
+    if (phase === 'investigating' && ['investigating', 'ready_for_report', 'writing'].includes(project.phase)) throw new Error('the research agent stopped before saving a report')
+  }
+
+  private stopRun(id: ResearchId): void {
+    const run = this.activeRuns.get(id)
+    if (run === undefined) return
+    run.controller.abort()
+    run.handle?.agent.cancel({ kind: 'user' })
+  }
+
+  private async bumpBudget(id: ResearchId, tool: 'web_search' | 'web_fetch'): Promise<void> {
+    await this.update(id, project => ({
+      ...project,
+      budget: tool === 'web_search'
+        ? { ...project.budget, searchesUsed: Math.min(project.budget.maxSearches, project.budget.searchesUsed + 1) }
+        : { ...project.budget, fetchesUsed: Math.min(project.budget.maxFetches, project.budget.fetchesUsed + 1) },
+    }))
   }
 
   private buildQuestions(input: ResearchStartRequest['questions']): ResearchQuestion[] {
@@ -206,6 +314,16 @@ function optionalText(value: string | undefined): string { return value?.trim() 
 function normalizeList(values: readonly string[]): string[] { return [...new Set(values.map(value => value.trim()).filter(Boolean))] }
 function researchText(project: ResearchProject): string { return [project.title, project.question, project.goal, project.constraints, project.seedText, project.report ?? '', ...project.questions.flatMap(question => [question.text, ...question.criteria.flatMap(criterion => [criterion.text, criterion.summary, criterion.gap])]), ...project.evidence.flatMap(evidence => [evidence.source, evidence.url ?? '', evidence.claim, evidence.snippet])].join('\n').toLocaleLowerCase() }
 function projectSummary(project: ResearchProject): string { return `${project.title} (${project.id})\nPhase: ${project.phase}; questions: ${project.questions.length}; evidence: ${project.evidence.length}\n${project.question}` }
+function runnerSystemPrompt(phase: RunnerPhase): string {
+  return phase === 'planning'
+    ? 'You are the planning stage of a private Deep Research run. Work only on the project id in the user message. Read its exact state, create a concise evidence-oriented plan, and submit it with deep_research_submit_plan. Do not investigate, write a report, ask the user a question, or emit a user-facing answer.'
+    : 'You are the private Deep Research runner. Work only on the project id in the user message. Read exact state first. Investigate each sub-question with web_search and web_fetch, save source-backed claims immediately, and update coverage after reviewing evidence. Respect dependencies and budgets. When every question is covered, partial, or blocked, write and save one cited report with explicit conclusions and limitations. Never invent a source, claim, coverage result, or completion. Do not ask the user a question or emit a user-facing answer.'
+}
+function runnerPrompt(id: ResearchId, phase: RunnerPhase): string {
+  return phase === 'planning'
+    ? `Plan Deep Research project ${id}. Call deep_research_get first, then call deep_research_submit_plan exactly once with 3-6 focused sub-questions, measurable success criteria, and valid zero-based dependencies.`
+    : `Run Deep Research project ${id} to completion inside this private research session. Call deep_research_get first. For each question, mark it running, gather and fetch independent sources, save evidence with exact question and criterion ids, then mark coverage. Finally call deep_research_complete with a cited Markdown report, conclusions, limitations, and partial=true only when evidence is insufficient.`
+}
 function snapshot(project: ResearchProject): ResearchProject { return Object.freeze({ ...project, questions: project.questions.map(question => Object.freeze({ ...question, dependsOn: [...question.dependsOn], criteria: question.criteria.map(criterion => Object.freeze({ ...criterion })) })), evidence: project.evidence.map(item => Object.freeze({ ...item, criterionIds: [...item.criterionIds] })), conclusions: [...project.conclusions], limitations: [...project.limitations], budget: Object.freeze({ ...project.budget }) }) }
 
 export default DeepResearchService

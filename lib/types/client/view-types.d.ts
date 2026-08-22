@@ -11,4 +11,3 @@ export interface ResearchViewApi {
     readonly fail: (id: ResearchId, reason: string, aborted: boolean) => Promise<ResearchProject>;
     readonly delete: (id: ResearchId) => Promise<ResearchDeleteResult>;
 }
-//# sourceMappingURL=view-types.d.ts.map

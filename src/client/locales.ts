@@ -91,6 +91,7 @@ export type DeepResearchKey =
   // investigate
   | 'investigate.title'
   | 'investigate.subtitle'
+  | 'investigate.running'
   | 'investigate.stop'
   | 'investigate.stopReason'
   | 'investigate.dependsOn'
@@ -104,6 +105,8 @@ export type DeepResearchKey =
   | 'report.placeholder'
   | 'report.limitations'
   | 'report.limitationsPlaceholder'
+  | 'report.writing'
+  | 'report.empty'
   // default plan template
   | 'planTemplate.define'
   | 'planTemplate.defineCriteria'
@@ -155,7 +158,7 @@ export const zh: Record<DeepResearchKey, string> = {
   'toolbar.sortTitle': '按标题',
   'toolbar.gridView': '网格视图',
   'toolbar.listView': '列表视图',
-  'action.start': '＋ 发起研究',
+  'action.start': '发起研究',
   'action.startShort': '发起研究',
   'action.cancel': '取消',
   'action.creating': '创建中…',
@@ -190,14 +193,14 @@ export const zh: Record<DeepResearchKey, string> = {
   'composer.seed': '已有材料',
   'composer.seedPlaceholder': '粘贴已有笔记或摘录（可选）',
   'composer.footer': '计划 → 调查 → 报告',
-  'workspace.back': '← 深度研究',
+  'workspace.back': '深度研究',
   'workspace.delete': '删除',
   'stepper.plan': '1 计划',
   'stepper.investigate': '2 调查',
   'stepper.report': '3 报告',
   'plan.title': '研究计划',
   'plan.subtitle': '确认后，模型按子问题和验收标准组合 Web / subagent 调查。',
-  'plan.confirmed': '✓ 已确认',
+  'plan.confirmed': '已确认',
   'plan.goal': '研究目标',
   'plan.constraints': '约束',
   'plan.criteria': '子问题与验收标准',
@@ -207,17 +210,20 @@ export const zh: Record<DeepResearchKey, string> = {
   'metric.fetchBudget': '抓取预算',
   'investigate.title': '调查看板',
   'investigate.subtitle': '覆盖度来自模型对已保存证据的显式审查。',
+  'investigate.running': '后台研究 Agent 正在调查；本页会自动刷新进度。',
   'investigate.stop': '停止调查',
   'investigate.stopReason': '用户停止了调查。',
   'investigate.dependsOn': '依赖 {count} 个上游问题',
   'evidence.title': '来源证据',
-  'evidence.empty': '让模型使用 Web 工具调查，并调用 deep_research_add_evidence 保存来源。',
-  'evidence.open': '打开来源 ↗',
+  'evidence.empty': '后台研究 Agent 正在检索来源；保存证据后会自动显示在这里。',
+  'evidence.open': '打开来源',
   'report.title': '综合报告',
   'report.subtitle': '比较证据、引用来源，并明确写出仍未解决的限制。',
   'report.placeholder': 'Markdown 研究报告…',
   'report.limitations': '限制与未解决问题',
   'report.limitationsPlaceholder': '每行一项限制',
+  'report.writing': '后台研究 Agent 正在整理证据并撰写报告…',
+  'report.empty': '报告尚未生成。',
   'planTemplate.define': '界定核心问题：{question}',
   'planTemplate.defineCriteria': '明确回答范围、关键概念和判定标准',
   'planTemplate.search': '检索并筛选权威来源',
@@ -260,7 +266,7 @@ export const en: Record<DeepResearchKey, string> = {
   'toolbar.sortTitle': 'By title',
   'toolbar.gridView': 'Grid view',
   'toolbar.listView': 'List view',
-  'action.start': '+ Start research',
+  'action.start': 'Start research',
   'action.startShort': 'Start research',
   'action.cancel': 'Cancel',
   'action.creating': 'Creating…',
@@ -295,14 +301,14 @@ export const en: Record<DeepResearchKey, string> = {
   'composer.seed': 'Existing material',
   'composer.seedPlaceholder': 'Paste existing notes or excerpts (optional)',
   'composer.footer': 'Plan → Investigate → Report',
-  'workspace.back': '← Deep Research',
+  'workspace.back': 'Deep Research',
   'workspace.delete': 'Delete',
   'stepper.plan': '1 Plan',
   'stepper.investigate': '2 Investigate',
   'stepper.report': '3 Report',
   'plan.title': 'Research plan',
   'plan.subtitle': 'Once confirmed, the model combines Web / subagent investigation per sub-question and acceptance criteria.',
-  'plan.confirmed': '✓ Confirmed',
+  'plan.confirmed': 'Confirmed',
   'plan.goal': 'Research goal',
   'plan.constraints': 'Constraints',
   'plan.criteria': 'Sub-questions & acceptance criteria',
@@ -312,17 +318,20 @@ export const en: Record<DeepResearchKey, string> = {
   'metric.fetchBudget': 'Fetch budget',
   'investigate.title': 'Investigation board',
   'investigate.subtitle': "Coverage comes from the model's explicit review of saved evidence.",
+  'investigate.running': 'The background research agent is investigating. This page refreshes automatically.',
   'investigate.stop': 'Stop investigation',
   'investigate.stopReason': 'The user stopped the investigation.',
   'investigate.dependsOn': 'Depends on {count} upstream question(s)',
   'evidence.title': 'Source evidence',
-  'evidence.empty': 'Ask the model to investigate with Web tools and call deep_research_add_evidence to save sources.',
-  'evidence.open': 'Open source ↗',
+  'evidence.empty': 'The background research agent is finding sources. Saved evidence appears here automatically.',
+  'evidence.open': 'Open source',
   'report.title': 'Synthesis report',
   'report.subtitle': 'Compare evidence, cite sources, and explicitly note unresolved limitations.',
   'report.placeholder': 'Markdown research report…',
   'report.limitations': 'Limitations & open questions',
   'report.limitationsPlaceholder': 'One limitation per line',
+  'report.writing': 'The background research agent is synthesizing evidence and writing the report…',
+  'report.empty': 'No report has been generated yet.',
   'planTemplate.define': 'Define the core question: {question}',
   'planTemplate.defineCriteria': 'Clarify the answer scope, key concepts, and success criteria',
   'planTemplate.search': 'Search and filter authoritative sources',
