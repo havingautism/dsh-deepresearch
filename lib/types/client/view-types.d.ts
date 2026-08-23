@@ -9,6 +9,10 @@ export interface ResearchViewApi {
     readonly confirmPlan: (id: ResearchId) => Promise<ResearchProject>;
     readonly complete: (request: ResearchCompleteRequest) => Promise<ResearchProject>;
     readonly fail: (id: ResearchId, reason: string, aborted: boolean) => Promise<ResearchProject>;
+    readonly resume: (id: ResearchId) => Promise<ResearchProject>;
+    readonly writeReport: (id: ResearchId) => Promise<ResearchProject>;
     readonly delete: (id: ResearchId) => Promise<ResearchDeleteResult>;
+    /** Subscribe to live project pushes; returns an unsubscribe disposer. */
+    readonly subscribeProgress: (listener: (project: ResearchProject) => void) => () => void;
 }
 //# sourceMappingURL=view-types.d.ts.map
