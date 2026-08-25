@@ -45,6 +45,10 @@ export interface CriterionReview {
 export declare function clip(value: unknown, max?: number): string;
 export declare function normalizeQuery(value: string): string;
 export declare function normalizeUrl(value: string): string;
+/** Keep the first occurrence of each normalized URL, up to the per-claim cap. */
+export declare function uniqueSources<T extends {
+    url: string;
+}>(sources: readonly T[], max?: number): T[];
 export declare function appendToolBudgetNote(payload: unknown, used: number, cap: number): string;
 export declare function indexSearchResult(urlIndex: Map<string, IndexedUrl>, sources: ReadonlyArray<{
     url?: string;
@@ -104,6 +108,8 @@ export declare function selectReadyWaveBatch(questions: readonly ResearchQuestio
         waitingOn: ResearchQuestionId[];
     }>;
 };
+/** Keep Scout/Evaluator draft panes for model prose; drop tool-log and JSON payloads. */
+export declare function readableRoleDraft(text: string): string;
 export declare function emptyProgress(): ResearchProgress;
 export declare function emptyScoutProgress(questionId: ResearchQuestionId, extras?: Partial<ResearchScoutProgress>): ResearchScoutProgress;
 export declare function mergeScoutProgress(progress: ResearchProgress, next: ResearchScoutProgress): ResearchProgress;

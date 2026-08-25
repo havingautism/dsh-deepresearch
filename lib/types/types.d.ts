@@ -191,7 +191,7 @@ export interface ResearchQuestionUpdateRequest {
     readonly status: ResearchQuestionStatus;
     readonly criteria?: ResearchCriterion[];
 }
-/** Save a final or explicitly partial report. */
+/** Save a final report. `partial` is accepted for compatibility and ignored: a saved report is complete. */
 export interface ResearchCompleteRequest {
     readonly id: ResearchId;
     readonly report: string;

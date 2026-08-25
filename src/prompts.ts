@@ -156,7 +156,7 @@ export function writerSystemPrompt(depth: ResearchDepth): string {
     '- Uncovered criteria and Risks / limitations sections must appear in the report.',
     length,
     'Length follows the pack: a thin pack means a shorter report is correct; do not pad.',
-    'Call deep_research_complete with the markdown report. Set partial=true when evidence is insufficient.',
+    'Call deep_research_complete with the markdown report. Write limitations into the report body; a saved report is complete.',
     'Do not search the web. Do not ask the user a question or emit a user-facing answer.',
   ].join('\n')
 }
@@ -166,7 +166,7 @@ export function writerUserPrompt(pack: string): string {
 }
 
 export function writerNudgePrompt(): string {
-  return 'Call deep_research_complete now with the markdown report. If the pack is thin, write a shorter report and set partial=true.'
+  return 'Call deep_research_complete now with the markdown report. If the pack is thin, write a shorter report and state limitations in the report body.'
 }
 
 export function toolsCapNote(used: number, cap = TOOLS_PER_CRITERION): string {

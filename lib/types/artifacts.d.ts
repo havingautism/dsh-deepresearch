@@ -11,6 +11,8 @@ export interface PersistedArtifact {
     readonly preview: string;
     readonly text: string;
 }
+/** Codemini-aligned readable text: strip script/style/noscript, keep body text. */
+export declare function readableFetchText(body: string): string;
 /** Persist a fetched page body and return the artifact id. */
 export declare function persistArtifact(scope: {
     projectId: string;
@@ -19,7 +21,7 @@ export declare function persistArtifact(scope: {
     url: string;
     body: string;
     rootDir?: string;
-}): Promise<PersistedArtifact>;
+}): Promise<PersistedArtifact | null>;
 /** Read a slice of a persisted artifact. Throws when the id is unknown. */
 export declare function readArtifact(scope: {
     projectId: string;

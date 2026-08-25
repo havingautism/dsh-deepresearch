@@ -183,7 +183,7 @@ export interface ResearchEvidenceRequest {
 }
 /** Update question progress and optional criterion coverage. */
 export interface ResearchQuestionUpdateRequest { readonly id: ResearchId; readonly questionId: ResearchQuestionId; readonly status: ResearchQuestionStatus; readonly criteria?: ResearchCriterion[] }
-/** Save a final or explicitly partial report. */
+/** Save a final report. `partial` is accepted for compatibility and ignored: a saved report is complete. */
 export interface ResearchCompleteRequest { readonly id: ResearchId; readonly report: string; readonly conclusions?: string[] | undefined; readonly limitations?: string[] | undefined; readonly partial?: boolean | undefined }
 /** Record an aborted or failed investigation. `aborted` pauses the run and keeps evidence. */
 export interface ResearchFailRequest { readonly id: ResearchId; readonly reason: string; readonly aborted?: boolean }

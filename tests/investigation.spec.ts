@@ -7,7 +7,8 @@ import { assertPlanFitsDepth, inferResearchPlanDepth, isOversizedPlanError, plan
 import {
   appendToolBudgetNote, buildResearchWritingPack, collectLimitations, deriveLimitationRows,
   emptyProgress, emptyScoutProgress, gateCandidatesByUrl, mergeScoutProgress, normalizeQuery,
-  normalizeSubmittedCandidates, normalizeUrl, parseCandidatesFromText, selectReadyWaveBatch,
+  normalizeSubmittedCandidates, normalizeUrl, parseCandidatesFromText, readableRoleDraft, selectReadyWaveBatch,
+  uniqueSources,
 } from '../src/investigation.ts'
 import { ResearchId, ResearchQuestionId, type ResearchProject } from '../src/types.ts'
 
@@ -65,6 +66,28 @@ describe('scout helpers', () => {
     expect(gated.accepted[0]?.sources).toEqual([expect.objectContaining({ url: 'https://example.test/a', artifactId: 'art_1' })])
     expect(gated.rejected).toHaveLength(0)
     expect(gateCandidatesByUrl([{ ...candidates[0]!, sources: [{ url: 'https://other.test', snippet: '', artifactId: '', toolText: '' }] }], urlIndex).rejected[0]?.reason).toContain('not seen')
+  })
+
+  it('deduplicates sources per claim and keeps the strongest-first cap', () => {
+    const candidates = normalizeSubmittedCandidates([{
+      claim: 'Hooks replace most class patterns.',
+      sources: [
+        { url: 'https://example.test/a?utm_source=x', snippet: 'one' },
+        { url: 'https://example.test/a', snippet: 'dup' },
+        { url: 'https://example.test/b', snippet: 'two' },
+        { url: 'https://example.test/c', snippet: 'three' },
+        { url: 'https://example.test/d', snippet: 'dropped' },
+      ],
+    }], 'c1.1')
+    expect(candidates[0]?.sources.map(source => source.url)).toEqual([
+      'https://example.test/a',
+      'https://example.test/b',
+      'https://example.test/c',
+    ])
+    expect(uniqueSources([
+      { url: 'https://example.test/a/' },
+      { url: 'https://example.test/a' },
+    ]).map(source => source.url)).toEqual(['https://example.test/a'])
   })
 
   it('parses scout JSON, annotates fuse use, and selects a ready wave of at most 3', () => {
@@ -132,14 +155,50 @@ describe('scout helpers', () => {
   })
 })
 
+describe('role drafts', () => {
+  it('keeps model prose and drops tool-log payloads', () => {
+    expect(readableRoleDraft('Search: replay contract')).toBe('')
+    expect(readableRoleDraft('Fetch: https://example.test/a')).toBe('')
+    expect(readableRoleDraft('{"ok":true}')).toBe('')
+    expect(readableRoleDraft('Hooks reuse state without HOCs.')).toBe('Hooks reuse state without HOCs.')
+  })
+})
+
 describe('artifacts', () => {
   it('persists, reads, and deletes a criterion artifact directory', async () => {
     const rootDir = await mkdtemp(join(tmpdir(), 'dsh-research-art-'))
     artifactRoots.push(rootDir)
     const stored = await persistArtifact({ projectId: 'p1', questionId: 'q1', criterionId: 'c1', url: 'https://example.test/a', body: 'hello world', rootDir })
-    const read = await readArtifact({ projectId: 'p1', questionId: 'q1', criterionId: 'c1', artifactId: stored.artifactId, rootDir })
+    expect(stored).not.toBeNull()
+    const read = await readArtifact({ projectId: 'p1', questionId: 'q1', criterionId: 'c1', artifactId: stored!.artifactId, rootDir })
     expect(read.text).toBe('hello world')
     await cleanupCriterionArtifacts('p1', 'q1', 'c1', rootDir)
-    await expect(readArtifact({ projectId: 'p1', questionId: 'q1', criterionId: 'c1', artifactId: stored.artifactId, rootDir })).rejects.toThrow()
+    await expect(readArtifact({ projectId: 'p1', questionId: 'q1', criterionId: 'c1', artifactId: stored!.artifactId, rootDir })).rejects.toThrow()
+  })
+
+  it('strips HTML chrome and keeps body text', async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), 'dsh-research-art-'))
+    artifactRoots.push(rootDir)
+    const stored = await persistArtifact({
+      projectId: 'p1', questionId: 'q1', criterionId: 'c1', url: 'https://example.test/hooks', rootDir,
+      body: '<!DOCTYPE html><html><head><title>Hooks</title><script>window.__boot=1</script><style>nav{}</style></head><body><nav>Skip</nav><article><h1>Custom Hooks</h1><p>Reuse logic without HOCs.</p></article></body></html>',
+    })
+    expect(stored?.text).toContain('Custom Hooks')
+    expect(stored?.text).toContain('Reuse logic without HOCs.')
+    expect(stored?.text).not.toContain('window.__boot')
+    expect(stored?.text).not.toContain('<head>')
+  })
+
+  it('caps persisted text at 200000 characters and windowed reads stay at 4000', async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), 'dsh-research-art-'))
+    artifactRoots.push(rootDir)
+    const stored = await persistArtifact({
+      projectId: 'p1', questionId: 'q1', criterionId: 'c1', url: 'https://example.test/long', rootDir,
+      body: 'x'.repeat(250000),
+    })
+    expect(stored?.text).toHaveLength(200000)
+    const read = await readArtifact({ projectId: 'p1', questionId: 'q1', criterionId: 'c1', artifactId: stored!.artifactId, offset: 199000, maxChars: 8000, rootDir })
+    expect(read.total).toBe(200000)
+    expect(read.text).toHaveLength(1000)
   })
 })

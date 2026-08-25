@@ -141,6 +141,10 @@ export type DeepResearchKey =
   | 'investigate.coverage'
   | 'investigate.toolsUsed'
   | 'investigate.capReached'
+  | 'investigate.activeNow'
+  | 'investigate.toolSearch'
+  | 'investigate.toolFetch'
+  | 'investigate.toolRead'
   | 'coverage.missing'
   | 'coverage.partial'
   | 'coverage.covered'
@@ -151,8 +155,12 @@ export type DeepResearchKey =
   | 'verify.fail'
   // evidence
   | 'evidence.title'
+  | 'evidence.sourcesTitle'
   | 'evidence.empty'
   | 'evidence.open'
+  | 'confidence.high'
+  | 'confidence.medium'
+  | 'confidence.low'
   // report
   | 'report.title'
   | 'report.subtitle'
@@ -320,6 +328,10 @@ export const zh: Record<DeepResearchKey, string> = {
   'investigate.coverage': '验收标准',
   'investigate.toolsUsed': '{used}/{cap} 工具',
   'investigate.capReached': '已达上限',
+  'investigate.activeNow': '进行中',
+  'investigate.toolSearch': '搜索',
+  'investigate.toolFetch': '抓取',
+  'investigate.toolRead': '读原文',
   'coverage.missing': '未覆盖',
   'coverage.partial': '部分覆盖',
   'coverage.covered': '已覆盖',
@@ -329,10 +341,14 @@ export const zh: Record<DeepResearchKey, string> = {
   'verify.warning': '警告',
   'verify.fail': '未通过',
   'evidence.title': '来源证据',
+  'evidence.sourcesTitle': '来源',
   'evidence.empty': '后台研究 Agent 正在检索来源；保存证据后会自动显示在这里。',
   'evidence.open': '打开来源',
+  'confidence.high': '高',
+  'confidence.medium': '中',
+  'confidence.low': '低',
   'report.title': '综合报告',
-  'report.subtitle': '比较证据、引用来源，并明确写出仍未解决的限制。',
+  'report.subtitle': '根据已核验证据撰写综合报告，并在正文中引用来源。',
   'report.placeholder': 'Markdown 研究报告…',
   'report.limitations': '限制与未解决问题',
   'report.limitationsPlaceholder': '每行一项限制',
@@ -488,6 +504,10 @@ export const en: Record<DeepResearchKey, string> = {
   'investigate.coverage': 'Coverage',
   'investigate.toolsUsed': '{used}/{cap} tools',
   'investigate.capReached': 'cap reached',
+  'investigate.activeNow': 'In progress',
+  'investigate.toolSearch': 'Search',
+  'investigate.toolFetch': 'Fetch',
+  'investigate.toolRead': 'Read source',
   'coverage.missing': 'Missing',
   'coverage.partial': 'Partial',
   'coverage.covered': 'Covered',
@@ -497,10 +517,14 @@ export const en: Record<DeepResearchKey, string> = {
   'verify.warning': 'WARNING',
   'verify.fail': 'FAIL',
   'evidence.title': 'Source evidence',
+  'evidence.sourcesTitle': 'Sources',
   'evidence.empty': 'The background research agent is finding sources. Saved evidence appears here automatically.',
   'evidence.open': 'Open source',
+  'confidence.high': 'High',
+  'confidence.medium': 'Medium',
+  'confidence.low': 'Low',
   'report.title': 'Synthesis report',
-  'report.subtitle': 'Compare evidence, cite sources, and explicitly note unresolved limitations.',
+  'report.subtitle': 'Write from verified evidence and cite sources in the report.',
   'report.placeholder': 'Markdown research report…',
   'report.limitations': 'Limitations & open questions',
   'report.limitationsPlaceholder': 'One limitation per line',

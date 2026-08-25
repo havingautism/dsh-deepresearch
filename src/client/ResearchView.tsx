@@ -431,7 +431,7 @@ function QuestionCard({ project, question, index, indexOf, scout, t }: { project
   const label = (at: number) => formatDepLabel(at, project.questions[at]?.text ?? '')
   const waitingOnDeps = waiting.length > 0
   const queued = !waitingOnDeps && scout?.status === 'waiting'
-  return <article className={css.questionCard} data-status={waitingOnDeps ? 'waiting' : question.status}>
+  return <article className={css.questionCard} data-status={waitingOnDeps ? 'waiting' : question.status} data-live={question.status === 'running' || undefined}>
     <div className={css.questionTitle}>
       <span>{ordinal(index)}</span>
       <div>
@@ -466,36 +466,38 @@ function ScoutCard({ project, scout, indexOf, t }: { project: ResearchProject; s
         : live
           ? (scout.activeCriterionText || t('investigate.running'))
           : ''
-  return <details className={css.scoutCard} data-status={scout.status} data-role={scout.role} open={live || waiting || failed || undefined}>
+  const scoutDraft = readableDraft(scout.scoutDraft)
+  const evaluatorDraft = readableDraft(scout.evaluatorDraft)
+  const criterionLabel = clipLabel(scout.activeCriterionText, 36)
+  return <details className={css.scoutCard} data-status={scout.status} data-role={scout.role} data-live={live || undefined} open={live || waiting || failed || undefined}>
     <summary className={css.scoutSummary}>
       <span className={css.scoutIcon} data-status={waiting ? 'waiting' : live ? 'running' : failed || partial ? scout.status : 'done'}>
         {live ? <IconLoading className={css.spinner} size={14} /> : failed || partial ? <IconTarget size={14} /> : waiting ? <IconTarget size={14} /> : <IconCheck size={14} />}
       </span>
       <span className={css.scoutSummaryBody}>
         <strong>{title}</strong>
-        <small>
-          {t('investigate.scouts')}
-          {` · ${t('investigate.tools')} ${scout.toolsUsed}/${scout.toolsCap || 10}`}
-          {` · ${t('investigate.evidenceCount', { count: accepted.length })}`}
-          {verifying ? ` · ${t('investigate.verifying')}` : ''}
-          {scout.activeCriterionText === '' || !live ? '' : ` · ${scout.activeCriterionText}`}
-        </small>
+        <span className={css.scoutMetaRow}>
+          <span className={css.scoutChip} data-kind={verifying ? 'verify' : 'role'}>{verifying ? t('investigate.verifying') : t('investigate.scouts')}</span>
+          <span className={css.scoutChip}>{t('investigate.toolsUsed', { used: scout.toolsUsed, cap: scout.toolsCap || 10 })}</span>
+          <span className={css.scoutChip}>{t('investigate.evidenceCount', { count: accepted.length })}</span>
+          {criterionLabel === '' || !live ? null : <span className={css.scoutChip} data-kind="criterion">{criterionLabel}</span>}
+        </span>
       </span>
-      <span className={css.scoutStatus}>{scoutStatusLabel(scout, t)}</span>
+      <span className={css.scoutStatus} data-live={live || undefined}>{scoutStatusLabel(scout, t)}</span>
       <IconChevronDown size={14} />
     </summary>
     <div className={css.scoutBody}>
-      {activity === '' ? null : <p className={css.scoutActivity} data-live={live || undefined}>{live ? <IconLoading className={css.spinner} size={12} /> : waiting ? <IconTarget size={12} /> : null}{activity}</p>}
+      {activity === '' ? null : <p className={css.scoutActivity} data-live={live || undefined}>{live ? <IconLoading className={css.spinner} size={12} /> : waiting ? <IconTarget size={12} /> : null}<span>{activity}</span></p>}
       {question === undefined || question.criteria.length === 0 ? null : <CriterionList criteria={question.criteria} scout={scout} t={t} />}
       {(scout.tools ?? []).length === 0 ? null : <ul className={css.toolList}>
-        {scout.tools.map((tool, index) => <li key={`${tool.name}-${index}`} data-status={tool.status}><b>{tool.name}</b>{tool.detail}</li>)}
+        {scout.tools.map((tool, index) => <li key={`${tool.name}-${index}`} data-status={tool.status}><b>{toolLabel(tool.name, t)}</b><span>{tool.detail}</span></li>)}
       </ul>}
       {accepted.length === 0 ? null : <div className={css.scoutEvidence}>
         {accepted.slice(0, 8).map(item => <EvidenceCard key={item.id} evidence={item} t={t} />)}
       </div>}
       {scout.dependencySummary === '' ? null : <details className={css.handoff} open={waiting || undefined}><summary>{t('investigate.dependencySummary')}</summary><pre>{scout.dependencySummary}</pre></details>}
-      {scout.scoutDraft.trim() === '' ? null : <details className={css.handoff} open={live && !verifying || undefined}><summary>{t('investigate.scoutDraft')}</summary><pre>{scout.scoutDraft}</pre></details>}
-      {scout.evaluatorDraft.trim() === '' ? null : <details className={css.handoff} open={verifying || undefined}><summary>{t('investigate.evaluatorDraft')}</summary><pre>{scout.evaluatorDraft}</pre></details>}
+      {scoutDraft === '' ? null : <details className={css.handoff}><summary>{t('investigate.scoutDraft')}</summary><pre>{scoutDraft}</pre></details>}
+      {evaluatorDraft === '' ? null : <details className={css.handoff}><summary>{t('investigate.evaluatorDraft')}</summary><pre>{evaluatorDraft}</pre></details>}
       {scout.handoff === '' ? null : <details className={css.handoff}><summary>{t('investigate.handoff')}</summary><pre>{scout.handoff}</pre></details>}
     </div>
   </details>
@@ -519,6 +521,7 @@ function CriterionList({ criteria, scout, t }: { criteria: ResearchQuestionView[
           <div className={css.coverageHead}>
             <b>{criterion.text}</b>
             <span>
+              {active ? `${t('investigate.activeNow')} · ` : ''}
               {status}
               {verification === '' ? '' : ` · ${verification}`}
               {` · ${t('investigate.toolsUsed', { used, cap })}`}
@@ -535,13 +538,15 @@ function CriterionList({ criteria, scout, t }: { criteria: ResearchQuestionView[
 }
 
 function EvidenceCard({ evidence, t }: { evidence: ResearchEvidenceView; t: Translate }) {
-  const sources = evidence.sources ?? []
-  const links = sources.length > 0 ? sources.map(source => source.url) : evidence.url === null ? [] : [evidence.url]
+  const url = primaryEvidenceUrl(evidence)
+  const host = sourceHostname(url)
   return <article className={css.evidenceCard} data-status={evidence.status}>
-    <div><strong>{evidence.source}</strong><span data-confidence={evidence.confidence}>{evidence.confidence}</span></div>
+    <div>
+      <span data-confidence={evidence.confidence}>{confidenceLabel(evidence.confidence, t)}</span>
+      {host === '' ? null : <span title={url}>{host}</span>}
+    </div>
     <p>{evidence.claim}</p>
-    {evidence.snippet === '' ? null : <blockquote>{evidence.snippet}</blockquote>}
-    {links.map(url => <a key={url} href={url} target="_blank" rel="noreferrer">{t('evidence.open')}<IconExternalLink size={12} /></a>)}
+    {url === '' ? null : <a href={url} target="_blank" rel="noreferrer" title={url}><IconExternalLink size={12} /><span>{host || url}</span></a>}
   </article>
 }
 
@@ -556,10 +561,9 @@ function ReportPane({ project, t, busy, onRewrite }: { project: ResearchProject;
         ? <div className={css.reportPending} role="status"><IconLoading className={css.spinner} size={16} /><span>{t('report.writing')}</span></div>
         : <div className={css.reportPending}>{t('report.empty')}</div>}
     {accepted.length === 0 ? null : <section className={css.evidencePane}>
-      <h4 className={css.boardHeading}>{t('evidence.title')} <span>{accepted.length}</span></h4>
+      <h4 className={css.boardHeading}>{t('evidence.sourcesTitle')} <span>{accepted.length}</span></h4>
       <div className={css.evidenceGrid}>{accepted.map(item => <EvidenceCard key={item.id} evidence={item} t={t} />)}</div>
     </section>}
-    <LimitationsBoard items={boardLimitations(project, t, false)} t={t} always />
   </section>
 }
 
@@ -598,6 +602,21 @@ function clipLabel(text: string, max: number): string {
   const characters = Array.from(text.trim())
   if (characters.length === 0) return ''
   return characters.length > max ? `${characters.slice(0, max - 1).join('')}…` : characters.join('')
+}
+
+function readableDraft(text: string): string {
+  const value = text.trim()
+  if (value === '') return ''
+  if (/^(Search|Fetch|Read artifact|Evaluator read)\b/i.test(value)) return ''
+  if (value.startsWith('{') || value.startsWith('[')) return ''
+  return value
+}
+
+function toolLabel(name: string, t: Translate): string {
+  if (name === 'research_web_search') return t('investigate.toolSearch')
+  if (name === 'research_web_fetch') return t('investigate.toolFetch')
+  if (name === 'read_artifact') return t('investigate.toolRead')
+  return name
 }
 
 function isSettledQuestion(status: ResearchQuestionView['status']): boolean {
@@ -680,6 +699,26 @@ function scoutStatusLabel(scout: ResearchScoutView, t: Translate): string {
   return t(({ waiting: 'investigate.waitingStatus', running: 'status.running', verifying: 'investigate.verifying', done: 'status.covered', partial: 'status.partial', blocked: 'status.blocked' } as const)[scout.status])
 }
 function coverageLabel(status: ResearchCoverageStatus, t: Translate): string { return t((`coverage.${status}`) as DeepResearchKey) }
+function confidenceLabel(value: ResearchProject['evidence'][number]['confidence'], t: Translate): string {
+  return t(value === 'high' ? 'confidence.high' : value === 'low' ? 'confidence.low' : 'confidence.medium')
+}
+function primaryEvidenceUrl(evidence: ResearchEvidenceView): string {
+  const seen = new Set<string>()
+  for (const source of evidence.sources ?? []) {
+    const url = source.url.trim()
+    if (url === '' || seen.has(url)) continue
+    seen.add(url)
+    return url
+  }
+  return evidence.url?.trim() ?? ''
+}
+function sourceHostname(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return url.replace(/^https?:\/\//, '').split('/')[0] ?? ''
+  }
+}
 function verificationLabel(value: ResearchVerification, t: Translate): string { return value === 'PASS' ? t('verify.pass') : value === 'WARNING' ? t('verify.warning') : value === 'FAIL' ? t('verify.fail') : '' }
 function splitEmoji(value: string): [string, string] { const first = Array.from(value.trim())[0] ?? ''; return /\p{Extended_Pictographic}/u.test(first) ? [first, value.trim().slice(first.length).trim() || value] : ['', value] }
 function formatDate(value: number): string { return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(value) }

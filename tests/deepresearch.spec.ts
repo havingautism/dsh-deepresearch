@@ -125,7 +125,7 @@ describe('Deep Research extension', () => {
       limitations: ['The comparison remains partial.'],
       partial: true,
     })
-    expect(complete.phase).toBe('incomplete')
+    expect(complete.phase).toBe('done')
     expect(complete.limitations).toEqual(['The comparison remains partial.'])
     expect(ctx.deepResearch.list({ query: 'logged call' }).projects).toEqual([complete])
   })
@@ -268,7 +268,7 @@ describe('Deep Research extension', () => {
     expect(withEvidence.evidence).toHaveLength(1)
   })
 
-  it('rejects an oversized plan and completes without evidence as incomplete', async () => {
+  it('rejects an oversized plan and completes a saved report as done', async () => {
     const ctx = await harness()
     const started = await ctx.deepResearch.start({
       question: '快速概览工具回放',
@@ -286,7 +286,7 @@ describe('Deep Research extension', () => {
     })).rejects.toThrow('allows at most 2')
     await ctx.deepResearch.confirmPlan({ id: started.id })
     const finished = await ctx.deepResearch.complete({ id: started.id, report: 'No attributable sources were found.' })
-    expect(finished.phase).toBe('incomplete')
+    expect(finished.phase).toBe('done')
     expect(finished.report).toContain('No attributable sources')
   })
 

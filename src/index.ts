@@ -21,8 +21,8 @@ import {
   appendToolBudgetNote, buildResearchWritingPack, buildScoutHandoff, collectDependencyContext, collectLimitations,
   criterionStatusFromReview, deriveQuestionGaps, emptyProgress, emptyScoutProgress, gateCandidatesByUrl,
   indexFetchResult, indexSearchResult, isAcceptedVerdict, mergeScoutProgress, normalizeQuery, normalizeReview,
-  normalizeSubmittedCandidates, normalizeUrl, parseCandidatesFromText, parseReviewFromText, pushProgressTool,
-  questionStatusFromCoverage, selectReadyWaveBatch, type Candidate, type CriterionReview, type IndexedUrl,
+  normalizeSubmittedCandidates, normalizeUrl, parseCandidatesFromText, parseReviewFromText, pushProgressTool, uniqueSources,
+  questionStatusFromCoverage, readableRoleDraft, selectReadyWaveBatch, type Candidate, type CriterionReview, type IndexedUrl,
 } from './investigation.ts'
 import {
   evaluatorNudgePrompt, evaluatorSystemPrompt, evaluatorUserPrompt, planningNudgePrompt, planningSystemPrompt,
@@ -185,9 +185,9 @@ export class DeepResearchService extends TypertRemoteService {
       if (project.evidence.length >= this.config.maxEvidencePerProject) throw new RangeError(`deepresearch: evidence limit ${this.config.maxEvidencePerProject} reached`)
       const question = project.questions.find(item => item.id === request.questionId); if (question === undefined) throw new Error(`deepresearch: question ${request.questionId} not found`)
       const criteria = new Set(question.criteria.map(item => item.id)); for (const id of request.criterionIds ?? []) if (!criteria.has(id)) throw new Error(`deepresearch: criterion ${id} not found`)
-      const sources = (request.sources ?? []).map(source => source.artifactId
+      const sources = uniqueSources((request.sources ?? []).map(source => source.artifactId
         ? { url: optionalText(source.url), snippet: optionalText(source.snippet), artifactId: source.artifactId }
-        : { url: optionalText(source.url), snippet: optionalText(source.snippet) })
+        : { url: optionalText(source.url), snippet: optionalText(source.snippet) }))
       const url = sources[0]?.url || optionalText(request.url) || null
       const snippet = sources[0]?.snippet || optionalText(request.snippet)
       const evidence: ResearchEvidence = {
@@ -216,11 +216,9 @@ export class DeepResearchService extends TypertRemoteService {
   complete(request: ResearchCompleteRequest): Promise<ResearchProject> {
     return this.update(request.id, project => {
       const report = requiredText(request.report, 'report'); if (report.length > this.config.maxReportChars) throw new RangeError(`deepresearch: report exceeds ${this.config.maxReportChars} characters`)
-      const accepted = project.evidence.filter(item => item.status === 'accepted')
       const limitations = normalizeList(request.limitations ?? collectLimitations(project))
-      const partial = request.partial === true || accepted.length === 0
       void cleanupProjectArtifacts(project.id)
-      return { ...project, phase: partial ? 'incomplete' : 'done', runState: 'idle', report, conclusions: normalizeList(request.conclusions ?? project.conclusions), limitations, progress: emptyProgress() }
+      return { ...project, phase: 'done', runState: 'idle', report, conclusions: normalizeList(request.conclusions ?? project.conclusions), limitations, progress: emptyProgress() }
     })
   }
 
@@ -456,10 +454,10 @@ export class DeepResearchService extends TypertRemoteService {
             await this.reserveBudget(id, 'searches')
             toolsUsed += 1
             const priorTools = this.require(id).progress.scouts.find(item => item.questionId === questionId)?.tools ?? []
-            await patchScout({ activity: `Search: ${query}`, tools: pushProgressTool(priorTools, { name: 'research_web_search', detail: query, status: 'running' }), scoutDraft: `Search: ${query}` })
+            await patchScout({ activity: `Search: ${query}`, tools: pushProgressTool(priorTools, { name: 'research_web_search', detail: query, status: 'running' }) })
             const result = await web.search({ query, maxResults: typeof args.max_results === 'number' ? args.max_results : 8 }, run.controller.signal)
             indexSearchResult(urlIndex, result.sources)
-            await patchScout({ activity: `Search: ${query}`, tools: pushProgressTool(priorTools, { name: 'research_web_search', detail: query, status: 'done' }), scoutDraft: `Search: ${query}` })
+            await patchScout({ activity: `Search: ${query}`, tools: pushProgressTool(priorTools, { name: 'research_web_search', detail: query, status: 'done' }) })
             return { text: appendToolBudgetNote({ content: result.content, sources: result.sources }, toolsUsed, toolsCap) }
           },
           presentCall: args => presentGeneric('search', 'Research search', args?.query),
@@ -481,9 +479,9 @@ export class DeepResearchService extends TypertRemoteService {
             toolsUsed += 1
             const fetched = await web.fetch({ url }, run.controller.signal)
             const body = fetched.body.content ?? ''
-            const artifact = body.trim() === '' ? null : await persistArtifact({ projectId: id, questionId, criterionId, url, body })
+            const artifact = await persistArtifact({ projectId: id, questionId, criterionId, url, body })
             indexFetchResult(urlIndex, url, artifact?.preview ?? body, artifact?.artifactId ?? '')
-            await patchScout({ activity: `Fetch: ${url}`, tools: pushProgressTool((this.require(id).progress.scouts.find(item => item.questionId === questionId)?.tools ?? []), { name: 'research_web_fetch', detail: url, status: 'done' }), scoutDraft: `Fetch: ${url}` })
+            await patchScout({ activity: `Fetch: ${url}`, tools: pushProgressTool((this.require(id).progress.scouts.find(item => item.questionId === questionId)?.tools ?? []), { name: 'research_web_fetch', detail: url, status: 'done' }) })
             return { text: appendToolBudgetNote({ url: fetched.url, statusCode: fetched.statusCode, artifactId: artifact?.artifactId ?? null, artifactPersisted: artifact !== null, preview: artifact?.preview ?? '', artifactNote: artifact === null ? 'No artifact persisted (empty body).' : 'Use this exact artifactId with read_artifact.' }, toolsUsed, toolsCap) }
           },
           presentCall: args => presentGeneric('search', 'Research fetch', args?.url),
@@ -502,7 +500,7 @@ export class DeepResearchService extends TypertRemoteService {
             try {
               const result = await readArtifact({ projectId: id, questionId, criterionId, artifactId: String(args.artifactId ?? ''), offset: typeof args.offset === 'number' ? args.offset : 0, maxChars: typeof args.maxChars === 'number' ? args.maxChars : 4000 })
               toolsUsed += 1
-              await patchScout({ activity: `Read artifact ${result.artifactId}`, scoutDraft: result.text.slice(0, 400) })
+              await patchScout({ activity: `Read artifact ${result.artifactId}` })
               return { text: appendToolBudgetNote(result, toolsUsed, toolsCap) }
             } catch (error) {
               return { text: `${error instanceof Error ? error.message : String(error)} Failed read did not consume the fuse.` }
@@ -527,7 +525,10 @@ export class DeepResearchService extends TypertRemoteService {
         }))
       },
       done: () => submitted || forceAfterFuseMiss,
-      onDraft: text => { void patchScout({ scoutDraft: text.slice(0, 800) }) },
+      onDraft: text => {
+        const draft = readableRoleDraft(text)
+        if (draft !== '') void patchScout({ scoutDraft: draft })
+      },
       lastText: text => {
         if (submitted) return
         const parsed = parseCandidatesFromText(text, criterionId)
@@ -546,10 +547,10 @@ export class DeepResearchService extends TypertRemoteService {
     const accepted = gated.filter(item => isAcceptedVerdict(verdictById.get(item.id)))
     for (const candidate of accepted) {
       const verdict = verdictById.get(candidate.id)
-      const sources = (verdict?.sources.length ? verdict.sources : candidate.sources).map(source => {
+      const sources = uniqueSources((verdict?.sources.length ? verdict.sources : candidate.sources).map(source => {
         const artifactId = candidate.sources.find(item => item.url === source.url)?.artifactId
         return artifactId ? { url: source.url, snippet: source.snippet, artifactId } : { url: source.url, snippet: source.snippet }
-      })
+      }))
       await this.addEvidence({
         id, questionId, criterionIds: [criterionId], source: sources[0]?.url || candidate.claim, url: sources[0]?.url, snippet: sources[0]?.snippet,
         sources, claim: candidate.claim, confidence: candidate.confidence, status: 'accepted',
@@ -615,7 +616,7 @@ export class DeepResearchService extends TypertRemoteService {
               artifactReads += 1
               await this.update(id, current => {
                 const previous = current.progress.scouts.find(item => item.questionId === question.id) ?? emptyScoutProgress(question.id)
-                return { ...current, progress: mergeScoutProgress(current.progress, { ...previous, evaluatorDraft: result.text.slice(0, 400), activity: `Evaluator read ${result.artifactId}` }) }
+                return { ...current, progress: mergeScoutProgress(current.progress, { ...previous, activity: `Evaluator read ${result.artifactId}` }) }
               })
               return { text: JSON.stringify(result) }
             } catch (error) {
@@ -638,9 +639,11 @@ export class DeepResearchService extends TypertRemoteService {
       },
       done: () => submitted !== null,
       onDraft: text => {
+        const draft = readableRoleDraft(text)
+        if (draft === '') return
         void this.update(id, current => {
           const previous = current.progress.scouts.find(item => item.questionId === question.id) ?? emptyScoutProgress(question.id)
-          return { ...current, progress: mergeScoutProgress(current.progress, { ...previous, evaluatorDraft: text.slice(0, 800) }) }
+          return { ...current, progress: mergeScoutProgress(current.progress, { ...previous, evaluatorDraft: draft }) }
         })
       },
       lastText: text => {
@@ -665,7 +668,7 @@ export class DeepResearchService extends TypertRemoteService {
       register: ctx => {
         ctx.tools.register(defineTool({
           name: 'deep_research_complete',
-          description: 'Save the evidence-based report. Set partial=true when evidence is insufficient.',
+          description: 'Save the evidence-based report. Write limitations into the report body.',
           parameters: { report: { type: 'string', required: true }, conclusions: { type: 'array', items: { type: 'string' } }, limitations: { type: 'array', items: { type: 'string' } }, partial: { type: 'boolean' } },
           output: { schema: TEXT_OUTPUT, render: (_args, value) => [{ type: 'text', text: value.text }] },
           execute: async args => {
@@ -833,8 +836,8 @@ function hydrateQuestion(question: ResearchQuestion): ResearchQuestion {
   return { ...question, dependsOn: [...question.dependsOn], gaps: [...(question.gaps ?? [])], handoff: question.handoff ?? '', criteria: question.criteria.map(hydrateCriterion) }
 }
 function hydrateEvidence(item: ResearchEvidence): ResearchEvidence {
-  const sources = item.sources?.length ? item.sources : (item.url || item.snippet ? [{ url: item.url ?? '', snippet: item.snippet }] : [])
-  return { ...item, criterionIds: [...item.criterionIds], status: item.status ?? 'accepted', sources }
+  const sources = uniqueSources(item.sources?.length ? item.sources : (item.url || item.snippet ? [{ url: item.url ?? '', snippet: item.snippet }] : []))
+  return { ...item, criterionIds: [...item.criterionIds], status: item.status ?? 'accepted', url: sources[0]?.url || item.url, snippet: sources[0]?.snippet || item.snippet, sources }
 }
 function resumeRunnerPhase(project: ResearchProject): RunnerPhase {
   if (!project.planConfirmed || project.phase === 'planning' || project.phase === 'awaiting_plan_confirm') return 'planning'

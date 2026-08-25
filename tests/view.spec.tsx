@@ -145,8 +145,15 @@ describe('Deep Research view', () => {
       }],
       evidence: [{
         id: ResearchEvidenceId('e1'), questionId: ResearchQuestionId('rq-1'), criterionIds: ['c1.1'],
-        source: '来源', claim: '结论', snippet: '片段', url: null, sources: [], confidence: 'high', status: 'accepted', createdAt: 1,
+        source: 'https://example.test/hooks-guide', claim: '类组件可按清单迁到 Hooks。', snippet: '片段',
+        url: 'https://example.test/hooks-guide',
+        sources: [
+          { url: 'https://example.test/hooks-guide', snippet: '片段' },
+          { url: 'https://example.test/hooks-guide', snippet: '重复' },
+        ],
+        confidence: 'high', status: 'accepted', createdAt: 1,
       }],
+      limitations: ['权威页只落了页头，无法逐字复核。'],
       report: '# 综合报告\n\n这是摘要。',
       budget: { maxSearches: 25, maxFetches: 200, searchesUsed: 1, fetchesUsed: 1 },
     })
@@ -157,6 +164,11 @@ describe('Deep Research view', () => {
     expect(screen.getByRole('button', { name: '3 报告' }).getAttribute('data-active')).toBe('true')
     expect(screen.getByRole('heading', { level: 3, name: '综合报告' })).toBeTruthy()
     expect(screen.queryByText('# 综合报告')).toBeNull()
+    expect(screen.queryByText('限制与未解决问题')).toBeNull()
+    expect(screen.queryByText('打开来源')).toBeNull()
+    expect(screen.getByRole('heading', { name: /来源/ })).toBeTruthy()
+    expect(screen.getAllByText('example.test').length).toBeGreaterThan(0)
+    expect(screen.getByText('高')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: '1 计划' }))
     expect(screen.getByRole('button', { name: '1 计划' }).getAttribute('data-active')).toBe('true')
@@ -165,6 +177,8 @@ describe('Deep Research view', () => {
     fireEvent.click(screen.getByRole('button', { name: '2 调查' }))
     expect(screen.getByRole('button', { name: '2 调查' }).getAttribute('data-active')).toBe('true')
     expect(screen.getByText('调查看板')).toBeTruthy()
+    expect(screen.getByText('限制与未解决问题')).toBeTruthy()
+    expect(screen.getByText('权威页只落了页头，无法逐字复核。')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: '深度研究' }))
     expect(screen.getByRole('heading', { name: '研究资料库' })).toBeTruthy()
@@ -266,7 +280,7 @@ describe('Deep Research view', () => {
     expect(screen.getAllByText('事件契约').length).toBeGreaterThan(0)
     expect(screen.getAllByText('渲染对比').length).toBeGreaterThan(0)
     expect(screen.getByText(/等待上游/)).toBeTruthy()
-    expect(screen.getByText('research_web_search')).toBeTruthy()
+    expect(screen.getByText('搜索')).toBeTruthy()
     expect(screen.getAllByText(/replay contract/).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/2\/10/).length).toBeGreaterThan(0)
     expect(screen.getAllByText('找出输入').length).toBeGreaterThan(0)
@@ -377,7 +391,7 @@ describe('Deep Research view', () => {
     fireEvent.click(await screen.findByRole('button', { name: '打开研究：🔬 调查缺字段' }))
     expect(screen.getByText('调查看板')).toBeTruthy()
     expect(screen.getAllByText(/子问题/).length).toBeGreaterThan(0)
-    expect(screen.getByText(/工具 0\/10/)).toBeTruthy()
+    expect(screen.getAllByText(/0\/10 工具/).length).toBeGreaterThan(0)
   })
 
   it('surfaces partial and rejected criteria as live limitations', async () => {

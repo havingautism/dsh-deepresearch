@@ -66,6 +66,20 @@ export function normalizeUrl(value: string): string {
   }
 }
 
+/** Keep the first occurrence of each normalized URL, up to the per-claim cap. */
+export function uniqueSources<T extends { url: string }>(sources: readonly T[], max = MAX_SOURCES_PER_CLAIM): T[] {
+  const out: T[] = []
+  const seen = new Set<string>()
+  for (const source of sources) {
+    const url = normalizeUrl(source.url)
+    if (url === '' || seen.has(url)) continue
+    seen.add(url)
+    out.push(url === source.url ? source : { ...source, url })
+    if (out.length >= max) break
+  }
+  return out
+}
+
 export function appendToolBudgetNote(payload: unknown, used: number, cap: number): string {
   const remaining = Math.max(0, cap - used)
   const note = `[tools ${used}/${cap} used, ${remaining} left]`
@@ -110,14 +124,13 @@ export function normalizeSubmittedCandidates(raw: unknown, criterionId: string):
       const url = normalizeUrl(String(src.url ?? ''))
       if (url === '') continue
       sources.push({ url, snippet: clip(src.snippet, 1200), artifactId: clip(src.artifactId, 120), toolText: '' })
-      if (sources.length >= MAX_SOURCES_PER_CLAIM) break
     }
     out.push({
       id: clip(record.id, 80) || `${criterionId}-c${index + 1}`,
       claim,
       confidence: record.confidence === 'high' || record.confidence === 'low' ? record.confidence : 'medium',
       riskFlags: [...new Set((Array.isArray(record.riskFlags) ? record.riskFlags : []).map(flag => clip(flag, 40)).filter(Boolean))],
-      sources,
+      sources: uniqueSources(sources),
     })
     if (out.length >= MAX_CANDIDATES_PER_CRITERION) break
   }
@@ -148,7 +161,7 @@ export function gateCandidatesByUrl(candidates: Candidate[], urlIndex: Map<strin
       rejected.push({ ...candidate, reason: missing.length ? `URL(s) not seen in tool results: ${missing.join(', ')}` : 'No URLs provided' })
       continue
     }
-    accepted.push({ ...candidate, sources: kept })
+    accepted.push({ ...candidate, sources: uniqueSources(kept) })
   }
   return { accepted, rejected }
 }
@@ -205,7 +218,7 @@ export function normalizeReview(args: Record<string, unknown>, candidates: Candi
       supported: Boolean(record.supported ?? record.accept ?? record.ok),
       relevantToCriterion: record.relevantToCriterion == null ? Boolean(record.relevant) : Boolean(record.relevantToCriterion),
       reason: clip(record.reason, 400),
-      sources: attached,
+      sources: uniqueSources(attached),
     })
   }
   const decisionRaw = String(args.decision ?? 'WARNING').trim().toUpperCase()
@@ -304,7 +317,7 @@ export function buildScoutHandoff(question: ResearchQuestion, evidence: readonly
 }
 
 export function evidenceSources(item: ResearchEvidence): Array<{ url: string; snippet: string; artifactId?: string | undefined }> {
-  if (item.sources.length > 0) return item.sources
+  if (item.sources.length > 0) return uniqueSources(item.sources)
   if (item.url || item.snippet) return [{ url: item.url ?? '', snippet: item.snippet }]
   return []
 }
@@ -369,6 +382,16 @@ export function selectReadyWaveBatch(questions: readonly ResearchQuestion[], max
   const batchIds = new Set(batch.map(item => item.id))
   const waiting = pending.filter(question => !batchIds.has(question.id)).map(question => ({ question, waitingOn: unresolvedDependencyIds(question, questions) }))
   return { ready: batch, waiting }
+}
+
+/** Keep Scout/Evaluator draft panes for model prose; drop tool-log and JSON payloads. */
+export function readableRoleDraft(text: string): string {
+  const value = text.trim()
+  if (value === '') return ''
+  if (/^(Search|Fetch|Read artifact|Evaluator read)\b/i.test(value)) return ''
+  if (value.startsWith('{') || value.startsWith('[')) return ''
+  if (/^\s*<(?:tool|function|invoke)\b/i.test(value)) return ''
+  return value.slice(0, 800)
 }
 
 export function emptyProgress(): ResearchProgress {
