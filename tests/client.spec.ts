@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import { apply } from '../src/client/index.ts'
-import { readDeepResearchRoute } from '../src/client/ui-store.ts'
+import { createDeepResearchUiStore, readDeepResearchRoute } from '../src/client/ui-store.ts'
 import type { ResearchViewApi } from '../src/client/view-types.ts'
 
 describe('Deep Research client mount', () => {
@@ -14,7 +14,10 @@ describe('Deep Research client mount', () => {
     const disposeRemote = vi.fn(async () => undefined)
     const view = Object.assign(Promise.resolve(), { dispose: disposeView })
     const remoteCtx = {
-      remote: { deepResearch: { list } },
+      remote: {
+        deepResearch: { list },
+        $on: vi.fn(() => () => undefined),
+      },
       slots: {
         inject: (key: string, callback: () => unknown) => {
           injected.push(key)
@@ -35,7 +38,7 @@ describe('Deep Research client mount', () => {
       },
       effect: (callback: () => unknown) => callback(),
       inject: (deps: readonly string[], callback: (scope: typeof remoteCtx) => void) => {
-        expect(deps).toEqual(['remote.deepResearch'])
+        expect(deps).toEqual(['remote.deepResearch', 'slots'])
         callback(remoteCtx)
         return view
       },
@@ -57,5 +60,38 @@ describe('Deep Research overlay route', () => {
     expect(readDeepResearchRoute('')).toEqual({ open: false, projectId: null })
     expect(readDeepResearchRoute('#deepresearch')).toEqual({ open: true, projectId: null })
     expect(readDeepResearchRoute('#deepresearch/research-1')).toEqual({ open: true, projectId: 'research-1' })
+  })
+
+  it('opens the overlay and selects a project from setProjectId', () => {
+    const store = createDeepResearchUiStore()
+    expect(store.getOpen()).toBe(false)
+    store.setProjectId('research-42')
+    expect(store.getOpen()).toBe(true)
+    expect(store.getProjectId()).toBe('research-42')
+  })
+
+  it('restores the project id from the hash when opening the overlay', () => {
+    window.location.hash = '#deepresearch/research-from-hash'
+    const store = createDeepResearchUiStore()
+    expect(store.getOpen()).toBe(true)
+    expect(store.getProjectId()).toBe('research-from-hash')
+    store.setOpen(false)
+    window.location.hash = '#deepresearch/research-from-hash'
+    store.setOpen(true)
+    expect(store.getOpen()).toBe(true)
+    expect(store.getProjectId()).toBe('research-from-hash')
+    window.location.hash = ''
+  })
+
+  it('syncs store state when the hash changes externally', () => {
+    const store = createDeepResearchUiStore()
+    window.location.hash = '#deepresearch/research-sync'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    expect(store.getOpen()).toBe(true)
+    expect(store.getProjectId()).toBe('research-sync')
+    window.location.hash = ''
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    expect(store.getOpen()).toBe(false)
+    expect(store.getProjectId()).toBe(null)
   })
 })

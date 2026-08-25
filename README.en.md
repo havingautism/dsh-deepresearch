@@ -13,8 +13,8 @@ English | [中文](README.md)
 - 📊 Track question coverage, search/fetch budgets, limitations, and partial completion.
 - 📝 Save conclusions and a full or explicitly incomplete final report.
 - 🗂️ Search, filter, sort, resume, abort, or delete projects from the Web library.
-- 🤖 Project creation starts a private DSH planning Agent; “Confirm & start” launches a separate investigation Agent without using the normal chat session.
-- 🔄 The research view refreshes continuously while running and shows search budgets, questions, evidence, coverage, and report progress.
+- 🤖 Planning submits a reviewable plan only. Confirming starts Scout / Evaluator per criterion (max 3 questions in parallel), then a Writer that cites writing-pack URLs. Normal chat does not inherit research tools or generic fetch. Projects persist in SQLite (`~/.dsh/storages/deepresearch.sqlite`); a leftover JSON unit is imported on first launch.
+- 🔄 The research view polls `progress` every 750ms and draws the question list plus Scout cards (fuse, recent tools, verification, handoff).
 - ✨ Match Codemini's research modal, loading motion, and context-specific button shapes.
 
 ## 🚀 Quick Start
@@ -38,7 +38,7 @@ Private research sessions record the host launch directory as `cwd` so DSH can a
 
 Only the private planning and investigation Agents receive their phase-specific research guidance.
 
-The planning Agent may only read the selected project and submit a reviewable plan. The investigation Agent stays on that project, uses Web tools, saves source evidence, updates coverage, and submits a cited report. Neither Agent may write into normal chat, invent sources, or bypass durable state updates.
+The planning Agent only has `deep_research_submit_plan`. The orchestrator then spawns Scout (`research_web_search` / `research_web_fetch` / `read_artifact` / `submit_criterion_candidates`) and Evaluator (`read_artifact` / `submit_criterion_review`) roles. The Writer only has `deep_research_complete` and must cite URLs from the writing pack.
 
 #### Token effect
 
@@ -52,7 +52,7 @@ The section remains prefix-stable while its text and registration scope are unch
 
 #### What the model sees
 
-Private research Agents see the phase-appropriate `deep_research_get`, `deep_research_submit_plan`, `deep_research_add_evidence`, `deep_research_update_coverage`, and `deep_research_complete` tools. Agent-scoped registration keeps them out of normal chat. Remote clients create, edit, confirm, stop, inspect, and delete projects.
+Each private Agent sees only its role tools. The orchestrator writes durable state. Remote clients create, edit, confirm, stop, inspect, and delete projects.
 
 #### Token effect
 

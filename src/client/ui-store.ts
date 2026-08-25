@@ -39,6 +39,12 @@ function writeHash(route: DeepResearchRoute, mode: 'push' | 'replace'): void {
   else window.history.replaceState(null, '', url)
 }
 
+/** Prefer the project id encoded in the current hash when the overlay is being opened. */
+function projectIdFromHashOrCurrent(current: string | null): string | null {
+  const routed = readDeepResearchRoute()
+  return routed.open ? routed.projectId : current
+}
+
 /** Create one overlay store shared by the sidebar entry and shell overlay. */
 export function createDeepResearchUiStore(): DeepResearchUiStore {
   const initial = readDeepResearchRoute()
@@ -62,22 +68,29 @@ export function createDeepResearchUiStore(): DeepResearchUiStore {
   }
 
   if (typeof window !== 'undefined') {
-    window.addEventListener('popstate', () => {
+    const syncFromLocation = () => {
       if (writing) return
-      const routed = readDeepResearchRoute()
-      applyRoute(routed, 'silent')
-    })
+      applyRoute(readDeepResearchRoute(), 'silent')
+    }
+    window.addEventListener('popstate', syncFromLocation)
+    window.addEventListener('hashchange', syncFromLocation)
   }
 
   return {
     getOpen: () => open,
     getProjectId: () => projectId,
     setOpen: (next) => {
-      if (next === open) return
-      applyRoute(next ? { open: true, projectId } : { open: false, projectId: null }, 'push')
+      if (!next) {
+        if (!open) return
+        applyRoute({ open: false, projectId: null }, 'push')
+        return
+      }
+      const nextProjectId = projectIdFromHashOrCurrent(projectId)
+      if (open && nextProjectId === projectId) return
+      applyRoute({ open: true, projectId: nextProjectId }, open ? 'replace' : 'push')
     },
     setProjectId: (id) => {
-      if (!open || id === projectId) return
+      if (open && id === projectId) return
       applyRoute({ open: true, projectId: id }, 'push')
     },
     subscribe: (listener) => {

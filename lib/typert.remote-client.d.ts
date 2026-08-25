@@ -3,7 +3,7 @@ import type {
   RemoteResult,
   TypertRemoteContribution,
 } from '@deepseek-ai/dsh-typert-protocol'
-import type { ResearchCompleteRequest, ResearchConfirmRequest, ResearchDeleteRequest, ResearchDeleteResult, ResearchEvidenceRequest, ResearchFailRequest, ResearchGetRequest, ResearchListRequest, ResearchListResult, ResearchPlanUpdateRequest, ResearchProject, ResearchQuestionUpdateRequest, ResearchStartRequest } from '@deepseek-ai/dsh-deepresearch/types'
+import type { ResearchCompleteRequest, ResearchConfirmRequest, ResearchDeleteRequest, ResearchDeleteResult, ResearchEvidenceRequest, ResearchFailRequest, ResearchGetRequest, ResearchListRequest, ResearchListResult, ResearchPlanUpdateRequest, ResearchProject, ResearchQuestionUpdateRequest, ResearchResumeRequest, ResearchStartRequest, ResearchWriteReportRequest } from '@deepseek-ai/dsh-deepresearch/types'
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface TypertRemoteNamespace$646565705265736561726368 {
@@ -14,9 +14,11 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     fail: (request: ResearchFailRequest) => Promise<RemoteResult<ResearchProject>>
     get: (request: ResearchGetRequest) => Promise<RemoteResult<ResearchProject | null>>
     list: (request: ResearchListRequest) => Promise<RemoteResult<ResearchListResult>>
+    resume: (request: ResearchResumeRequest) => Promise<RemoteResult<ResearchProject>>
     start: (request: ResearchStartRequest) => Promise<RemoteResult<ResearchProject>>
     updatePlan: (request: ResearchPlanUpdateRequest) => Promise<RemoteResult<ResearchProject>>
     updateQuestion: (request: ResearchQuestionUpdateRequest) => Promise<RemoteResult<ResearchProject>>
+    writeReport: (request: ResearchWriteReportRequest) => Promise<RemoteResult<ResearchProject>>
   }
   interface TypertRemoteMap {
     'deepResearch/addEvidence': (request: ResearchEvidenceRequest) => Promise<RemoteResult<ResearchProject>>
@@ -26,9 +28,11 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'deepResearch/fail': (request: ResearchFailRequest) => Promise<RemoteResult<ResearchProject>>
     'deepResearch/get': (request: ResearchGetRequest) => Promise<RemoteResult<ResearchProject | null>>
     'deepResearch/list': (request: ResearchListRequest) => Promise<RemoteResult<ResearchListResult>>
+    'deepResearch/resume': (request: ResearchResumeRequest) => Promise<RemoteResult<ResearchProject>>
     'deepResearch/start': (request: ResearchStartRequest) => Promise<RemoteResult<ResearchProject>>
     'deepResearch/updatePlan': (request: ResearchPlanUpdateRequest) => Promise<RemoteResult<ResearchProject>>
     'deepResearch/updateQuestion': (request: ResearchQuestionUpdateRequest) => Promise<RemoteResult<ResearchProject>>
+    'deepResearch/writeReport': (request: ResearchWriteReportRequest) => Promise<RemoteResult<ResearchProject>>
   }
   interface TypertRemoteNamespaceMap {
     'deepResearch': TypertRemoteNamespace$646565705265736561726368

@@ -8,3 +8,20 @@
   background: var(--dsw-alias-bg-base);
   pointer-events: auto;
 }
+
+.crash {
+  display: grid;
+  width: min(520px, calc(100% - 48px));
+  margin: auto;
+  padding: 22px 24px;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary) 24%, var(--dsw-alias-border-l1));
+  border-radius: 16px;
+  background: var(--dsw-alias-bg-base);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 16%);
+}
+
+.crash h3 { margin: 0; font-size: 16px; font-weight: 620; }
+.crash p { margin: 0; color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 1.55; }
+.crash code { padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 8%, transparent); color: var(--dsw-alias-state-error-primary); font-size: 11px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+.crash button { justify-self: start; margin-top: 4px; padding: 8px 14px; border: 0; border-radius: 10px; background: var(--dsw-alias-label-primary); color: var(--dsw-alias-bg-base); font-size: 12px; font-weight: 600; }

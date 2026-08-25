@@ -14,6 +14,14 @@ export declare const researchCriterionSchema: z.ZodObject<{
     }>;
     summary: z.ZodString;
     gap: z.ZodString;
+    warning: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+    verification: z.ZodDefault<z.ZodOptional<z.ZodEnum<{
+        "": "";
+        PASS: "PASS";
+        WARNING: "WARNING";
+        FAIL: "FAIL";
+    }>>>;
+    toolCount: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
 }, z.core.$strip>;
 /** Stored planned-question schema. */
 export declare const researchQuestionSchema: z.ZodObject<{
@@ -22,8 +30,8 @@ export declare const researchQuestionSchema: z.ZodObject<{
     dependsOn: z.ZodArray<z.ZodPipe<z.ZodString, z.ZodTransform<ResearchQuestionId, string>>>;
     status: z.ZodEnum<{
         failed: "failed";
-        pending: "pending";
         running: "running";
+        pending: "pending";
         covered: "covered";
         partial: "partial";
         blocked: "blocked";
@@ -40,7 +48,17 @@ export declare const researchQuestionSchema: z.ZodObject<{
         }>;
         summary: z.ZodString;
         gap: z.ZodString;
+        warning: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+        verification: z.ZodDefault<z.ZodOptional<z.ZodEnum<{
+            "": "";
+            PASS: "PASS";
+            WARNING: "WARNING";
+            FAIL: "FAIL";
+        }>>>;
+        toolCount: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
     }, z.core.$strip>>;
+    gaps: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString>>>;
+    handoff: z.ZodDefault<z.ZodOptional<z.ZodString>>;
 }, z.core.$strip>;
 /** Stored source-backed evidence schema. */
 export declare const researchEvidenceSchema: z.ZodObject<{
@@ -50,13 +68,63 @@ export declare const researchEvidenceSchema: z.ZodObject<{
     source: z.ZodString;
     url: z.ZodNullable<z.ZodString>;
     snippet: z.ZodString;
+    sources: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodObject<{
+        url: z.ZodString;
+        snippet: z.ZodString;
+        artifactId: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>>>;
     claim: z.ZodString;
     confidence: z.ZodEnum<{
         low: "low";
         medium: "medium";
         high: "high";
     }>;
+    status: z.ZodDefault<z.ZodOptional<z.ZodEnum<{
+        candidate: "candidate";
+        accepted: "accepted";
+        rejected: "rejected";
+    }>>>;
     createdAt: z.ZodNumber;
+}, z.core.$strip>;
+/** Stored investigation process snapshot. */
+export declare const researchProgressSchema: z.ZodObject<{
+    running: z.ZodNumber;
+    waiting: z.ZodNumber;
+    scouts: z.ZodArray<z.ZodObject<{
+        questionId: z.ZodPipe<z.ZodString, z.ZodTransform<ResearchQuestionId, string>>;
+        role: z.ZodEnum<{
+            writing: "writing";
+            waiting: "waiting";
+            scout: "scout";
+            evaluator: "evaluator";
+        }>;
+        status: z.ZodEnum<{
+            done: "done";
+            running: "running";
+            partial: "partial";
+            blocked: "blocked";
+            waiting: "waiting";
+            verifying: "verifying";
+        }>;
+        waitingOn: z.ZodArray<z.ZodPipe<z.ZodString, z.ZodTransform<ResearchQuestionId, string>>>;
+        toolsUsed: z.ZodNumber;
+        toolsCap: z.ZodNumber;
+        activity: z.ZodString;
+        tools: z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            detail: z.ZodString;
+            status: z.ZodEnum<{
+                done: "done";
+                running: "running";
+            }>;
+        }, z.core.$strip>>;
+        scoutDraft: z.ZodString;
+        evaluatorDraft: z.ZodString;
+        activeCriterionId: z.ZodString;
+        activeCriterionText: z.ZodString;
+        dependencySummary: z.ZodString;
+        handoff: z.ZodString;
+    }, z.core.$strip>>;
 }, z.core.$strip>;
 /** Stored research project schema. */
 export declare const researchProjectSchema: z.ZodObject<{
@@ -73,8 +141,8 @@ export declare const researchProjectSchema: z.ZodObject<{
     }>;
     phase: z.ZodEnum<{
         planning: "planning";
-        investigating: "investigating";
         awaiting_plan_confirm: "awaiting_plan_confirm";
+        investigating: "investigating";
         ready_for_report: "ready_for_report";
         incomplete: "incomplete";
         writing: "writing";
@@ -82,6 +150,11 @@ export declare const researchProjectSchema: z.ZodObject<{
         failed: "failed";
         aborted: "aborted";
     }>;
+    runState: z.ZodDefault<z.ZodOptional<z.ZodEnum<{
+        idle: "idle";
+        running: "running";
+        paused: "paused";
+    }>>>;
     planConfirmed: z.ZodBoolean;
     questions: z.ZodArray<z.ZodObject<{
         id: z.ZodPipe<z.ZodString, z.ZodTransform<ResearchQuestionId, string>>;
@@ -89,8 +162,8 @@ export declare const researchProjectSchema: z.ZodObject<{
         dependsOn: z.ZodArray<z.ZodPipe<z.ZodString, z.ZodTransform<ResearchQuestionId, string>>>;
         status: z.ZodEnum<{
             failed: "failed";
-            pending: "pending";
             running: "running";
+            pending: "pending";
             covered: "covered";
             partial: "partial";
             blocked: "blocked";
@@ -107,7 +180,17 @@ export declare const researchProjectSchema: z.ZodObject<{
             }>;
             summary: z.ZodString;
             gap: z.ZodString;
+            warning: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+            verification: z.ZodDefault<z.ZodOptional<z.ZodEnum<{
+                "": "";
+                PASS: "PASS";
+                WARNING: "WARNING";
+                FAIL: "FAIL";
+            }>>>;
+            toolCount: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
         }, z.core.$strip>>;
+        gaps: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString>>>;
+        handoff: z.ZodDefault<z.ZodOptional<z.ZodString>>;
     }, z.core.$strip>>;
     evidence: z.ZodArray<z.ZodObject<{
         id: z.ZodPipe<z.ZodString, z.ZodTransform<ResearchEvidenceId, string>>;
@@ -116,12 +199,22 @@ export declare const researchProjectSchema: z.ZodObject<{
         source: z.ZodString;
         url: z.ZodNullable<z.ZodString>;
         snippet: z.ZodString;
+        sources: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodObject<{
+            url: z.ZodString;
+            snippet: z.ZodString;
+            artifactId: z.ZodOptional<z.ZodString>;
+        }, z.core.$strip>>>>;
         claim: z.ZodString;
         confidence: z.ZodEnum<{
             low: "low";
             medium: "medium";
             high: "high";
         }>;
+        status: z.ZodDefault<z.ZodOptional<z.ZodEnum<{
+            candidate: "candidate";
+            accepted: "accepted";
+            rejected: "rejected";
+        }>>>;
         createdAt: z.ZodNumber;
     }, z.core.$strip>>;
     conclusions: z.ZodArray<z.ZodString>;
@@ -133,6 +226,45 @@ export declare const researchProjectSchema: z.ZodObject<{
         searchesUsed: z.ZodNumber;
         fetchesUsed: z.ZodNumber;
     }, z.core.$strip>;
+    progress: z.ZodDefault<z.ZodOptional<z.ZodObject<{
+        running: z.ZodNumber;
+        waiting: z.ZodNumber;
+        scouts: z.ZodArray<z.ZodObject<{
+            questionId: z.ZodPipe<z.ZodString, z.ZodTransform<ResearchQuestionId, string>>;
+            role: z.ZodEnum<{
+                writing: "writing";
+                waiting: "waiting";
+                scout: "scout";
+                evaluator: "evaluator";
+            }>;
+            status: z.ZodEnum<{
+                done: "done";
+                running: "running";
+                partial: "partial";
+                blocked: "blocked";
+                waiting: "waiting";
+                verifying: "verifying";
+            }>;
+            waitingOn: z.ZodArray<z.ZodPipe<z.ZodString, z.ZodTransform<ResearchQuestionId, string>>>;
+            toolsUsed: z.ZodNumber;
+            toolsCap: z.ZodNumber;
+            activity: z.ZodString;
+            tools: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                detail: z.ZodString;
+                status: z.ZodEnum<{
+                    done: "done";
+                    running: "running";
+                }>;
+            }, z.core.$strip>>;
+            scoutDraft: z.ZodString;
+            evaluatorDraft: z.ZodString;
+            activeCriterionId: z.ZodString;
+            activeCriterionText: z.ZodString;
+            dependencySummary: z.ZodString;
+            handoff: z.ZodString;
+        }, z.core.$strip>>;
+    }, z.core.$strip>>>;
     createdAt: z.ZodNumber;
     updatedAt: z.ZodNumber;
 }, z.core.$strip>;

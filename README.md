@@ -13,8 +13,8 @@
 - 📊 跟踪问题覆盖度、搜索与抓取预算、局限和部分完成状态。
 - 📝 保存结论，以及完整或明确标记为未完成的最终报告。
 - 🗂️ 在 Web 资料库中搜索、筛选、排序、恢复、中止或删除项目。
-- 🤖 创建项目后由私有 DSH Agent 生成可审查计划；“确认并开始”再启动独立调查 Agent，不占用普通聊天会话。
-- 🔄 研究页在运行阶段持续刷新，实时显示检索预算、子问题、证据、覆盖度和报告阶段。
+- 🤖 创建项目后由私有规划 Agent 只提交计划；确认后再按子问题并行派出 Scout / Evaluator，最后用写作包撰写报告。普通聊天不挂研究工具，也不开通用 fetch。项目持久化在 SQLite（`~/.dsh/storages/deepresearch.sqlite`）；首次启动会导入旧的 JSON 文件。
+- 🔄 研究页每 750ms 刷新 `progress`：题列表、Scout 卡（工具 fuse、最近检索/抓取、核验、handoff）和已接受证据。
 - ✨ 对齐 Codemini 的研究 Modal、加载动效和各场景按钮形态。
 
 ## 🚀 快速开始
@@ -38,7 +38,7 @@ dsh web
 
 只有插件创建的私有规划/调查 Agent 会收到对应阶段的研究工作流指引。
 
-规划 Agent 只能读取指定项目并提交可审查计划；调查 Agent 只能处理同一项目，使用 Web 工具保存来源证据、更新覆盖度并提交带引用的报告。两者都禁止向普通聊天输出结果、虚构来源或跳过持久状态写入。
+规划 Agent 只挂 `deep_research_submit_plan`。调查由编排器按标准派出 Scout（`research_web_search` / `research_web_fetch` / `read_artifact` / `submit_criterion_candidates`）和 Evaluator（`read_artifact` / `submit_criterion_review`）；Writer 只挂 `deep_research_complete`，按写作包 URL 标源。普通聊天不继承这些工具。
 
 #### Token effect
 
@@ -52,7 +52,7 @@ dsh web
 
 #### What the model sees
 
-私有研究 Agent 会看到阶段所需的 `deep_research_get`、`deep_research_submit_plan`、`deep_research_add_evidence`、`deep_research_update_coverage` 和 `deep_research_complete`。这些工具按 Agent scope 注册，不会泄漏到普通聊天。Remote 客户端负责创建、编辑、确认、停止、读取和删除项目。
+每个私有 Agent 只看到当前角色的工具；状态由编排器写入 SQLite 项目表。Remote 客户端负责创建、编辑、确认、停止、读取和删除项目。
 
 #### Token effect
 

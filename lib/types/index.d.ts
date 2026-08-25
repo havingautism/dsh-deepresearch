@@ -1,34 +1,56 @@
 /**
- * Evidence-first Deep Research workspace over existing Web and subagent Tools.
+ * Codemini-aligned Deep Research: planning Lead, serial/parallel Scouts, Evaluator, Writer.
  * @module @deepseek-ai/dsh-deepresearch
  */
 import { Context, Service } from '@deepseek-ai/cordis';
 import s from '@deepseek-ai/schemastery';
 import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
-import type { ResearchCompleteRequest, ResearchConfirmRequest, ResearchDeleteRequest, ResearchDeleteResult, ResearchEvidenceRequest, ResearchFailRequest, ResearchGetRequest, ResearchListRequest, ResearchListResult, ResearchPlanUpdateRequest, ResearchProject, ResearchQuestionUpdateRequest, ResearchStartRequest } from './types.ts';
+import type { ResearchCompleteRequest, ResearchConfirmRequest, ResearchDeleteRequest, ResearchDeleteResult, ResearchEvidenceRequest, ResearchFailRequest, ResearchGetRequest, ResearchListRequest, ResearchListResult, ResearchPlanUpdateRequest, ResearchProject, ResearchQuestionUpdateRequest, ResearchResumeRequest, ResearchStartRequest, ResearchWriteReportRequest } from './types.ts';
 export type * from './types.ts';
 export { ResearchEvidenceId, ResearchId, ResearchQuestionId } from './types.ts';
 export { deepResearchDomainSpec, researchCriterionSchema, researchEvidenceSchema, researchProjectSchema, researchQuestionSchema } from './spec.ts';
+export { defaultDeepResearchSqlitePath, defaultDeepResearchUnitPath, importJsonProjectsIfEmpty, migrateDeepResearchUnitFile, resolveDeepResearchUnitPath } from './migrate.ts';
+export { assertPlanFitsDepth, inferResearchPlanDepth, planResearchBudget } from './budget.ts';
+export { buildResearchWritingPack, gateCandidatesByUrl, normalizeQuery, normalizeSubmittedCandidates, normalizeUrl, parseCandidatesFromText, selectReadyWaveBatch, } from './investigation.ts';
 /** Required project, evidence, and report limits. */
 export interface Config {
-    /** Whether project creation and confirmation start private DSH Agents. */
     readonly runnerEnabled: boolean;
-    /** Workspace recorded on private research Agent sessions; relative paths resolve from the host launch directory. */
     readonly runnerCwd: string;
-    /** Maximum durable research projects. */
     readonly maxProjects: number;
-    /** Maximum planned sub-questions in one project. */
     readonly maxQuestions: number;
-    /** Maximum success criteria for one sub-question. */
     readonly maxCriteriaPerQuestion: number;
-    /** Maximum source-backed evidence items in one project. */
     readonly maxEvidencePerProject: number;
-    /** Maximum characters in a saved final report. */
     readonly maxReportChars: number;
+    /** Override JSON storages directory; defaults to `DSH_HOME/storages`. */
+    readonly storageRoot?: string;
+}
+interface WebLike {
+    search(request: {
+        query: string;
+        maxResults?: number;
+    }, signal?: AbortSignal): Promise<{
+        content?: string;
+        sources: ReadonlyArray<{
+            url: string;
+            title?: string;
+            snippet?: string;
+        }>;
+    }>;
+    fetch(request: {
+        url: string;
+    }, signal?: AbortSignal): Promise<{
+        url: string;
+        statusCode: number;
+        body: {
+            kind: string;
+            content: string;
+        };
+    }>;
 }
 declare module '@deepseek-ai/cordis' {
     interface Context {
         deepResearch: DeepResearchService;
+        web?: WebLike;
     }
 }
 /** Durable Codemini-style Deep Research project service. */
@@ -41,75 +63,36 @@ export declare class DeepResearchService extends TypertRemoteService {
     private readonly activeRuns;
     /** @param ctx - Host context carrying storage, prompt, and Tool registries. @param config - Project and content limits. */
     constructor(ctx: Context, config: Config);
-    /** Open storage and install runner teardown. */
     protected [Service.init](): Promise<void>;
-    /**
-     * List projects matching optional text and phase filters.
-     * @param request - optional project filters.
-     * @returns matching projects ordered by newest edit.
-     */
     list(request: ResearchListRequest): ResearchListResult;
-    /**
-     * Read one exact project.
-     * @param request - project identity to read.
-     * @returns detached project data, or null when absent.
-     */
     get(request: ResearchGetRequest): ResearchProject | null;
-    /**
-     * Create a draft plan with sub-questions and success criteria.
-     * @param request - research objective and initial question plan.
-     * @returns the detached stored project.
-     */
     start(request: ResearchStartRequest): Promise<ResearchProject>;
-    /**
-     * Replace an unconfirmed project plan.
-     * @param request - replacement plan and project identity.
-     * @returns the updated detached project.
-     */
     updatePlan(request: ResearchPlanUpdateRequest): Promise<ResearchProject>;
-    /**
-     * Lock the plan and make the project ready for investigation.
-     * @param request - project identity to confirm.
-     * @returns the updated detached project.
-     */
     confirmPlan(request: ResearchConfirmRequest): Promise<ResearchProject>;
-    /**
-     * Attach one source-backed claim to a planned sub-question.
-     * @param request - evidence attribution and claim content.
-     * @returns the updated detached project.
-     */
     addEvidence(request: ResearchEvidenceRequest): Promise<ResearchProject>;
-    /**
-     * Update sub-question and criterion coverage after evidence review.
-     * @param request - reviewed question progress and criteria.
-     * @returns the updated detached project.
-     */
     updateQuestion(request: ResearchQuestionUpdateRequest): Promise<ResearchProject>;
-    /**
-     * Save a final or explicitly partial report with conclusions and limitations.
-     * @param request - report content and completion state.
-     * @returns the completed detached project.
-     */
     complete(request: ResearchCompleteRequest): Promise<ResearchProject>;
-    /**
-     * Record an aborted or failed investigation without losing evidence.
-     * @param request - failure reason and termination type.
-     * @returns the updated detached project.
-     */
     fail(request: ResearchFailRequest): Promise<ResearchProject>;
-    /**
-     * Delete a project; absence is a stable successful outcome.
-     * @param request - project identity to delete.
-     * @returns whether the project existed.
-     */
+    resume(request: ResearchResumeRequest): Promise<ResearchProject>;
+    writeReport(request: ResearchWriteReportRequest): Promise<ResearchProject>;
     delete(request: ResearchDeleteRequest): Promise<ResearchDeleteResult>;
-    private registerRunnerTools;
     private launch;
-    private runProject;
+    private runPlanning;
+    private runInvestigation;
+    private runWritingPhase;
+    private runScoutForQuestion;
+    private runCriterion;
+    private runEvaluator;
+    private runWriting;
+    private spawnRole;
+    private markPaused;
     private stopRun;
-    private bumpBudget;
+    private reserveBudget;
     private buildQuestions;
+    private require;
+    private requireWeb;
     private update;
+    private emitProgress;
     private enqueue;
     private requireTable;
 }
