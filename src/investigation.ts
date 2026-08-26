@@ -102,10 +102,16 @@ export function indexSearchResult(urlIndex: Map<string, IndexedUrl>, sources: Re
   }
 }
 
-export function indexFetchResult(urlIndex: Map<string, IndexedUrl>, url: string, text: string, artifactId: string): void {
-  const normalized = normalizeUrl(url)
-  if (normalized === '') return
-  urlIndex.set(normalized, { url: normalized, text: clip(text, MAX_URL_TEXT_FOR_VERIFY), artifactId })
+export function indexFetchResult(urlIndex: Map<string, IndexedUrl>, url: string, text: string, artifactId: string, finalUrl?: string): void {
+  const requested = normalizeUrl(url)
+  const landed = normalizeUrl(finalUrl || url)
+  const preview = clip(text, MAX_URL_TEXT_FOR_VERIFY)
+  const write = (key: string) => {
+    if (key === '') return
+    urlIndex.set(key, { url: key, text: preview, artifactId })
+  }
+  write(landed || requested)
+  if (requested !== '' && requested !== landed) write(requested)
 }
 
 export function normalizeSubmittedCandidates(raw: unknown, criterionId: string): Candidate[] {

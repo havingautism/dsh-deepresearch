@@ -6,7 +6,7 @@ import { cleanupCriterionArtifacts, persistArtifact, readArtifact } from '../src
 import { assertPlanFitsDepth, inferResearchPlanDepth, isOversizedPlanError, planResearchBudget } from '../src/budget.ts'
 import {
   appendToolBudgetNote, buildResearchWritingPack, collectLimitations, deriveLimitationRows,
-  emptyProgress, emptyScoutProgress, gateCandidatesByUrl, mergeScoutProgress, normalizeQuery,
+  emptyProgress, emptyScoutProgress, gateCandidatesByUrl, indexFetchResult, mergeScoutProgress, normalizeQuery,
   normalizeSubmittedCandidates, normalizeUrl, parseCandidatesFromText, readableRoleDraft, selectReadyWaveBatch,
   uniqueSources,
 } from '../src/investigation.ts'
@@ -66,6 +66,20 @@ describe('scout helpers', () => {
     expect(gated.accepted[0]?.sources).toEqual([expect.objectContaining({ url: 'https://example.test/a', artifactId: 'art_1' })])
     expect(gated.rejected).toHaveLength(0)
     expect(gateCandidatesByUrl([{ ...candidates[0]!, sources: [{ url: 'https://other.test', snippet: '', artifactId: '', toolText: '' }] }], urlIndex).rejected[0]?.reason).toContain('not seen')
+  })
+
+  it('indexes both the requested fetch URL and the landed URL after a redirect', () => {
+    const urlIndex = new Map<string, { url: string; text: string; artifactId: string }>()
+    indexFetchResult(urlIndex, 'https://bit.ly/abc', 'article body', 'art_1', 'https://example.test/article')
+    expect([...urlIndex.keys()]).toEqual(['https://example.test/article', 'https://bit.ly/abc'])
+    expect(urlIndex.get('https://bit.ly/abc')).toMatchObject({ artifactId: 'art_1', text: 'article body' })
+    expect(urlIndex.get('https://example.test/article')).toMatchObject({ artifactId: 'art_1', text: 'article body' })
+    const claim = (url: string) => [{
+      id: 'c1.1-c1', claim: 'The article exists.', confidence: 'medium' as const, riskFlags: [],
+      sources: [{ url, snippet: 'article body', artifactId: '', toolText: '' }],
+    }]
+    expect(gateCandidatesByUrl(claim('https://bit.ly/abc'), urlIndex).accepted).toHaveLength(1)
+    expect(gateCandidatesByUrl(claim('https://example.test/article'), urlIndex).accepted).toHaveLength(1)
   })
 
   it('deduplicates sources per claim and keeps the strongest-first cap', () => {

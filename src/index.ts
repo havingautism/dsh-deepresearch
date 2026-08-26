@@ -480,7 +480,7 @@ export class DeepResearchService extends TypertRemoteService {
             const fetched = await web.fetch({ url }, run.controller.signal)
             const body = fetched.body.content ?? ''
             const artifact = await persistArtifact({ projectId: id, questionId, criterionId, url, body })
-            indexFetchResult(urlIndex, url, artifact?.preview ?? body, artifact?.artifactId ?? '')
+            indexFetchResult(urlIndex, url, artifact?.preview ?? body, artifact?.artifactId ?? '', fetched.url)
             await patchScout({ activity: `Fetch: ${url}`, tools: pushProgressTool((this.require(id).progress.scouts.find(item => item.questionId === questionId)?.tools ?? []), { name: 'research_web_fetch', detail: url, status: 'done' }) })
             return { text: appendToolBudgetNote({ url: fetched.url, statusCode: fetched.statusCode, artifactId: artifact?.artifactId ?? null, artifactPersisted: artifact !== null, preview: artifact?.preview ?? '', artifactNote: artifact === null ? 'No artifact persisted (empty body).' : 'Use this exact artifactId with read_artifact.' }, toolsUsed, toolsCap) }
           },

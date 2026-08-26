@@ -55,7 +55,7 @@ export declare function indexSearchResult(urlIndex: Map<string, IndexedUrl>, sou
     snippet?: string;
     title?: string;
 }>): void;
-export declare function indexFetchResult(urlIndex: Map<string, IndexedUrl>, url: string, text: string, artifactId: string): void;
+export declare function indexFetchResult(urlIndex: Map<string, IndexedUrl>, url: string, text: string, artifactId: string, finalUrl?: string): void;
 export declare function normalizeSubmittedCandidates(raw: unknown, criterionId: string): Candidate[];
 export declare function gateCandidatesByUrl(candidates: Candidate[], urlIndex: Map<string, IndexedUrl>): {
     accepted: Candidate[];
