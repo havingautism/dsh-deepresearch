@@ -7,6 +7,7 @@ import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import Tools from '@deepseek-ai/dsh-tools'
 import Storage from '@deepseek-ai/dsh-storage'
 import * as StorageDomain from '@deepseek-ai/dsh-storage-domain'
+import * as StorageJson from '@deepseek-ai/dsh-storage-json'
 import * as StorageSqlite from '@deepseek-ai/dsh-storage-sqlite'
 import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
 import DeepResearch, { ResearchId } from '../lib/index.js'
@@ -371,5 +372,37 @@ describe('Deep Research extension', () => {
     expect(toolsBySpawn.some(names => names.includes('submit_criterion_review'))).toBe(true)
     expect(toolsBySpawn.some(names => names.includes('deep_research_complete'))).toBe(true)
     expect(toolsBySpawn.every(names => !names.includes('deep_research_get') && !names.includes('deep_research_add_evidence'))).toBe(true)
+  })
+
+  it('mounts sqlite itself when the host has not', async () => {
+    const storageRoot = await mkdtemp(join(tmpdir(), 'dsh-deepresearch-self-sqlite-'))
+    roots.push(storageRoot)
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(Tools)
+    await ctx.plugin(Storage)
+    await ctx.plugin(StorageJson, { root: storageRoot })
+    await ctx.plugin(StorageDomain, { backend: 'json' })
+    ctx.provide('agents', { create: () => Promise.reject(new Error('runner disabled in unit harness')) } as never)
+    ctx.provide('agentDefaultModel', { currentSelection: () => ({ provider: 'test', model: 'test' }) } as never)
+    ctx.provide('agentPresets', { mount: async () => undefined } as never)
+    ctx.provide('web', {
+      search: async () => ({ content: '', sources: [] }),
+      fetch: async ({ url }: { url: string }) => ({ url, statusCode: 200, body: { kind: 'html', content: '' } }),
+    } as never)
+    await ctx.plugin(DeepResearch, {
+      runnerEnabled: false,
+      runnerCwd: storageRoot,
+      storageRoot,
+      maxProjects: 2,
+      maxQuestions: 4,
+      maxCriteriaPerQuestion: 3,
+      maxEvidencePerProject: 3,
+      maxReportChars: 160,
+    })
+    expect(ctx.storage.backend.names()).toContain('sqlite')
+    const started = await ctx.deepResearch.start({ question: 'Persisted without a pre-mounted sqlite?', depth: 'quick', questions: [] })
+    expect(ctx.deepResearch.get({ id: started.id })?.question).toBe('Persisted without a pre-mounted sqlite?')
   })
 })

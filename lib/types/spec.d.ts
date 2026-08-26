@@ -29,12 +29,12 @@ export declare const researchQuestionSchema: z.ZodObject<{
     text: z.ZodString;
     dependsOn: z.ZodArray<z.ZodPipe<z.ZodString, z.ZodTransform<ResearchQuestionId, string>>>;
     status: z.ZodEnum<{
+        failed: "failed";
+        running: "running";
+        pending: "pending";
         covered: "covered";
         partial: "partial";
         blocked: "blocked";
-        pending: "pending";
-        running: "running";
-        failed: "failed";
     }>;
     criteria: z.ZodArray<z.ZodObject<{
         id: z.ZodString;
@@ -93,18 +93,18 @@ export declare const researchProgressSchema: z.ZodObject<{
     scouts: z.ZodArray<z.ZodObject<{
         questionId: z.ZodPipe<z.ZodString, z.ZodTransform<ResearchQuestionId, string>>;
         role: z.ZodEnum<{
+            writing: "writing";
             waiting: "waiting";
             scout: "scout";
             evaluator: "evaluator";
-            writing: "writing";
         }>;
         status: z.ZodEnum<{
+            done: "done";
+            running: "running";
             partial: "partial";
             blocked: "blocked";
-            running: "running";
             waiting: "waiting";
             verifying: "verifying";
-            done: "done";
         }>;
         waitingOn: z.ZodArray<z.ZodPipe<z.ZodString, z.ZodTransform<ResearchQuestionId, string>>>;
         toolsUsed: z.ZodNumber;
@@ -114,8 +114,8 @@ export declare const researchProgressSchema: z.ZodObject<{
             name: z.ZodString;
             detail: z.ZodString;
             status: z.ZodEnum<{
-                running: "running";
                 done: "done";
+                running: "running";
             }>;
         }, z.core.$strip>>;
         scoutDraft: z.ZodString;
@@ -140,19 +140,19 @@ export declare const researchProjectSchema: z.ZodObject<{
         deep: "deep";
     }>;
     phase: z.ZodEnum<{
-        failed: "failed";
-        writing: "writing";
-        done: "done";
         planning: "planning";
-        investigating: "investigating";
         awaiting_plan_confirm: "awaiting_plan_confirm";
+        investigating: "investigating";
         ready_for_report: "ready_for_report";
         incomplete: "incomplete";
+        writing: "writing";
+        done: "done";
+        failed: "failed";
         aborted: "aborted";
     }>;
     runState: z.ZodDefault<z.ZodOptional<z.ZodEnum<{
-        running: "running";
         idle: "idle";
+        running: "running";
         paused: "paused";
     }>>>;
     planConfirmed: z.ZodBoolean;
@@ -161,12 +161,12 @@ export declare const researchProjectSchema: z.ZodObject<{
         text: z.ZodString;
         dependsOn: z.ZodArray<z.ZodPipe<z.ZodString, z.ZodTransform<ResearchQuestionId, string>>>;
         status: z.ZodEnum<{
+            failed: "failed";
+            running: "running";
+            pending: "pending";
             covered: "covered";
             partial: "partial";
             blocked: "blocked";
-            pending: "pending";
-            running: "running";
-            failed: "failed";
         }>;
         criteria: z.ZodArray<z.ZodObject<{
             id: z.ZodString;
@@ -232,18 +232,18 @@ export declare const researchProjectSchema: z.ZodObject<{
         scouts: z.ZodArray<z.ZodObject<{
             questionId: z.ZodPipe<z.ZodString, z.ZodTransform<ResearchQuestionId, string>>;
             role: z.ZodEnum<{
+                writing: "writing";
                 waiting: "waiting";
                 scout: "scout";
                 evaluator: "evaluator";
-                writing: "writing";
             }>;
             status: z.ZodEnum<{
+                done: "done";
+                running: "running";
                 partial: "partial";
                 blocked: "blocked";
-                running: "running";
                 waiting: "waiting";
                 verifying: "verifying";
-                done: "done";
             }>;
             waitingOn: z.ZodArray<z.ZodPipe<z.ZodString, z.ZodTransform<ResearchQuestionId, string>>>;
             toolsUsed: z.ZodNumber;
@@ -253,8 +253,8 @@ export declare const researchProjectSchema: z.ZodObject<{
                 name: z.ZodString;
                 detail: z.ZodString;
                 status: z.ZodEnum<{
-                    running: "running";
                     done: "done";
+                    running: "running";
                 }>;
             }, z.core.$strip>>;
             scoutDraft: z.ZodString;

@@ -26,15 +26,15 @@ dsh plugin --profile web add github:havingautism/dsh-deepresearch
 dsh web
 ```
 
-Open **Deep Research** from the sidebar footer and create a project. The plugin creates a research-only DSH Agent to generate the plan while the page refreshes. Review or edit that plan, then choose “Confirm & start” to launch a new private investigation Agent. It uses the profile's Web and subagent capabilities and writes searches, evidence, coverage, and the final report back to the research workspace. The normal chat receives no research prompt, tool calls, or model output. The patch enables the runner and sets explicit limits for projects, questions, criteria, evidence, and reports.
+Open **Deep Research** from the sidebar footer and create a project. The plugin creates a research-only DSH Agent to generate the plan while the page refreshes. Review or edit that plan, then choose “Confirm & start” to launch a new private investigation Agent. It uses the profile's Web and subagent capabilities and writes searches, evidence, coverage, and the final report back to the research workspace. The normal chat receives no research prompt, tool calls, or model output. The patch enables the runner and sets explicit limits for projects, questions, criteria, evidence, and reports. A deepresearch-only install is enough — you do not need Notebooks or a hand-written yml.
 
 Private research sessions record the host launch directory as `cwd` so DSH can assemble the persona and runtime context. A planning failure stays on the Plan step and displays the persisted error instead of opening an empty investigation board.
 
+At boot, if the host has no sqlite / HTTP fetch yet, this plugin mounts them; if they already exist, it reuses them. Research data lives in the `deepresearch` domain on that sqlite backend.
+
 ## Web fetch and security
 
-DSH does not mount a fetch provider or expose chat `web_fetch` by default (see [dsh-base `cordis.patch.yml`](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/bundle/base/cordis.patch.yml#L396-L418)). This plugin's patch **inserts** `@deepseek-ai/dsh-web-fetch-http` (loader id: `web-fetch-http`) for private Scout `research_web_fetch` and host `ctx.web.fetch`.
-
-When `@deepseek-ai/dsh-notebooks` is also installed, **only this patch inserts fetch**; the notebooks patch does not, so both plugins share one provider. A deepresearch-only install gets fetch from this bundle.
+DSH does not mount a fetch provider or expose chat `web_fetch` by default (see [dsh-base `cordis.patch.yml`](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/bundle/base/cordis.patch.yml#L396-L418)). At boot this plugin mounts `@deepseek-ai/dsh-web-fetch-http` when it is missing, for private Scout `research_web_fetch` and host `ctx.web.fetch`; an already-mounted provider is left alone. Installing alongside `@deepseek-ai/dsh-notebooks` therefore does not duplicate loader ids. Chat `web_fetch` stays off.
 
 Installing it opts into web retrieval and associated SSRF-style risk. Use in a trusted environment. See the [default Web search decision note](https://github.com/deepseek-ai/deepseek-harness/blob/master/.agents/notes/implemented/feature/2026-07-31-web-default-search.md).
 

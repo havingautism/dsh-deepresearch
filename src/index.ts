@@ -12,6 +12,7 @@ import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-agent-presets'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
+import type {} from '@deepseek-ai/dsh-storage'
 import type { KvTable } from '@deepseek-ai/dsh-storage-domain'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
@@ -30,6 +31,7 @@ import {
   writerUserPrompt,
 } from './prompts.ts'
 import { importJsonProjectsIfEmpty, migrateDeepResearchUnitFile, resolveDeepResearchUnitPath } from './migrate.ts'
+import { ensurePluginPlatform, sqlitePathFor } from './platform.ts'
 import { deepResearchDomainSpec } from './spec.ts'
 import { ResearchEvidenceId, ResearchId, ResearchQuestionId } from './types.ts'
 import type {
@@ -68,7 +70,7 @@ interface WebLike {
   fetch(request: { url: string }, signal?: AbortSignal): Promise<{ url: string; statusCode: number; body: { kind: string; content: string } }>
 }
 
-declare module '@deepseek-ai/cordis' { interface Context { deepResearch: DeepResearchService; web?: WebLike } }
+declare module '@deepseek-ai/cordis' { interface Context { deepResearch: DeepResearchService } }
 
 const TEXT_OUTPUT = { type: 'object', additionalProperties: false, properties: { text: { type: 'string', required: true } } } as const
 
@@ -84,7 +86,7 @@ type RunnerPhase = 'planning' | 'investigating' | 'writing'
 
 /** Durable Codemini-style Deep Research project service. */
 export class DeepResearchService extends TypertRemoteService {
-  static inject = ['storageDomain', 'tools', 'systemPrompt', 'agents', 'agentDefaultModel', 'agentPresets', 'web']
+  static inject = ['storage', 'storageDomain', 'tools', 'systemPrompt', 'agents', 'agentDefaultModel', 'agentPresets', 'web']
   static Config: s<Config> = s.object({
     runnerEnabled: s.boolean().required(),
     runnerCwd: s.string().default(process.cwd()),
@@ -101,6 +103,10 @@ export class DeepResearchService extends TypertRemoteService {
   constructor(ctx: Context, private readonly config: Config) { super(ctx, 'deepResearch') }
 
   protected async [Service.init](): Promise<void> {
+    await ensurePluginPlatform(this.ctx, {
+      domain: 'deepresearch',
+      sqlitePath: sqlitePathFor(this.config),
+    })
     const jsonPath = resolveDeepResearchUnitPath(this.config.storageRoot)
     await migrateDeepResearchUnitFile(jsonPath)
     const domain = await this.ctx.storageDomain.open(deepResearchDomainSpec)
@@ -321,7 +327,7 @@ export class DeepResearchService extends TypertRemoteService {
   }
 
   private async runInvestigation(id: ResearchId, run: ActiveResearchRun): Promise<void> {
-    if (this.ctx.web === undefined) throw new Error('ctx.web is not available; mount a search provider and @deepseek-ai/dsh-web-fetch-http for research fetch')
+    this.requireWeb()
     while (!run.controller.signal.aborted) {
       const project = this.require(id)
       const { ready, waiting } = selectReadyWaveBatch(project.questions, MAX_PARALLEL_SCOUTS)
@@ -786,8 +792,9 @@ export class DeepResearchService extends TypertRemoteService {
   }
 
   private requireWeb(): WebLike {
-    if (this.ctx.web === undefined) throw new Error('ctx.web is not available; mount a search provider and @deepseek-ai/dsh-web-fetch-http for research fetch')
-    return this.ctx.web
+    const web = this.ctx.get('web') as WebLike | undefined
+    if (web === undefined) throw new Error('ctx.web is not available; mount a search provider and @deepseek-ai/dsh-web-fetch-http for research fetch')
+    return web
   }
 
   private update(id: ResearchId, mutate: (project: ResearchProject) => ResearchProject): Promise<ResearchProject> {

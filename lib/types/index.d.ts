@@ -24,33 +24,9 @@ export interface Config {
     /** Override JSON storages directory; defaults to `DSH_HOME/storages`. */
     readonly storageRoot?: string;
 }
-interface WebLike {
-    search(request: {
-        query: string;
-        maxResults?: number;
-    }, signal?: AbortSignal): Promise<{
-        content?: string;
-        sources: ReadonlyArray<{
-            url: string;
-            title?: string;
-            snippet?: string;
-        }>;
-    }>;
-    fetch(request: {
-        url: string;
-    }, signal?: AbortSignal): Promise<{
-        url: string;
-        statusCode: number;
-        body: {
-            kind: string;
-            content: string;
-        };
-    }>;
-}
 declare module '@deepseek-ai/cordis' {
     interface Context {
         deepResearch: DeepResearchService;
-        web?: WebLike;
     }
 }
 /** Durable Codemini-style Deep Research project service. */

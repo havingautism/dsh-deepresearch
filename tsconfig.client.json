@@ -1,0 +1,37 @@
+{
+  "extends": "../deepseek-harness/tsconfig.base.client.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "tsBuildInfoFile": "lib/tsconfig.client.tsbuildinfo",
+    "typeRoots": [
+      "../deepseek-harness/node_modules/@types",
+      "../deepseek-harness/scripts/types"
+    ]
+  },
+  "files": [
+    "src/client/index.ts",
+    "src/client/ResearchView.tsx",
+    "src/client/DeepResearchSidebarEntry.tsx",
+    "src/client/DeepResearchOverlay.tsx",
+    "src/client/client-face.ts",
+    "src/client/ui-store.ts",
+    "src/client/project-hydrate.ts",
+    "src/client/view-types.ts",
+    "src/client/locales.ts",
+    "src/css-modules.d.ts",
+    "src/types.ts"
+  ],
+  "references": [
+    { "path": "../deepseek-harness/vendor/cordis" },
+    { "path": "../deepseek-harness/packages/client/locale" },
+    { "path": "../deepseek-harness/packages/client/runtime" },
+    { "path": "../deepseek-harness/packages/client/ui-layout" },
+    { "path": "../deepseek-harness/packages/client/ui-sidebar" },
+    { "path": "../deepseek-harness/packages/client/ui-primitives" },
+    { "path": "../deepseek-harness/packages/client/ui-slots" },
+    { "path": "../deepseek-harness/packages/api/remotes/tsconfig.client.json" },
+    { "path": "../deepseek-harness/packages/typert/protocol" },
+    { "path": "./tsconfig.host.json" }
+  ]
+}

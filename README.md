@@ -26,15 +26,15 @@ dsh plugin --profile web add github:havingautism/dsh-deepresearch
 dsh web
 ```
 
-在左侧边栏底部打开「深度研究」，创建项目。插件会在后台建立仅供研究使用的 DSH Agent 来生成计划；页面持续刷新，计划生成后可编辑并确认。点击“确认并开始”会建立新的私有调查 Agent，使用该 profile 已安装的 Web 与 subagent 能力，并把每次检索、证据、覆盖状态和最终报告写回研究工作区。普通聊天不会收到研究 prompt、工具调用或模型输出。插件 patch 显式启用 runner，并设置项目、问题、标准、证据和报告上限。
+在左侧边栏底部打开「深度研究」，创建项目。插件会在后台建立仅供研究使用的 DSH Agent 来生成计划；页面持续刷新，计划生成后可编辑并确认。点击“确认并开始”会建立新的私有调查 Agent，使用该 profile 已安装的 Web 与 subagent 能力，并把每次检索、证据、覆盖状态和最终报告写回研究工作区。普通聊天不会收到研究 prompt、工具调用或模型输出。插件 patch 显式启用 runner，并设置项目、问题、标准、证据和报告上限。单独安装即可使用，不必先装随手记或手写 yml。
 
 私有研究 Session 会记录宿主启动目录作为 `cwd`，以便 DSH persona 和运行时上下文可以完整装配。规划失败会停留在“计划”步骤并显示持久化错误，不会跳到空的调查看板。
 
+启动时若宿主还没有 sqlite / HTTP fetch，插件会自行挂上；已经有了则共用。研究数据在 sqlite 里占用独立的 `deepresearch` 域。
+
 ## 网页抓取与安全
 
-DSH 默认不挂载 fetch provider、不开放聊天 `web_fetch`（见 [dsh-base `cordis.patch.yml`](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/bundle/base/cordis.patch.yml#L396-L418)）。本插件 patch **会 insert** `@deepseek-ai/dsh-web-fetch-http`（loader id：`web-fetch-http`），供私有 Scout 的 `research_web_fetch` 与宿主 `ctx.web.fetch` 使用。
-
-若同时安装 `@deepseek-ai/dsh-notebooks`，**只需这一处 insert**；随手记 patch 不再重复挂载，两个插件共用同一份 provider。单独安装深度研究时，由本插件提供 fetch。
+DSH 默认不挂载 fetch provider、不开放聊天 `web_fetch`（见 [dsh-base `cordis.patch.yml`](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/bundle/base/cordis.patch.yml#L396-L418)）。本插件在启动时若还没有 `@deepseek-ai/dsh-web-fetch-http`，会自行挂上，供私有 Scout 的 `research_web_fetch` 与宿主 `ctx.web.fetch` 使用；已挂过则跳过。因此和 `@deepseek-ai/dsh-notebooks` 同时安装不会抢同一个 loader id。聊天里的 `web_fetch` 仍然保持关闭。
 
 安装即表示你接受网页抓取带来的 SSRF 类风险；请在可信环境使用。详见 [Web 默认搜索决策说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/.agents/notes/implemented/feature/2026-07-31-web-default-search.zh.md)。
 

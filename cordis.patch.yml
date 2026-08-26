@@ -1,10 +1,4 @@
 - insert:
-    - id: web-fetch-http
-      name: '@deepseek-ai/dsh-web-fetch-http'
-    - id: storage-sqlite
-      name: '@deepseek-ai/dsh-storage-sqlite'
-      config:
-        path: !!js dshHomePath('storages', 'deepresearch.sqlite')
     - id: deepresearch
       name: '@deepseek-ai/dsh-deepresearch'
       config:
@@ -14,10 +8,3 @@
         maxCriteriaPerQuestion: 3
         maxEvidencePerProject: 200
         maxReportChars: 200000
-
-# Keep other domains on JSON; only the high-churn research table uses SQLite.
-- id: storage-domain
-  config:
-    backend: json
-    routes:
-      deepresearch: sqlite
