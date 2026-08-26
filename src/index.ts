@@ -30,7 +30,7 @@ import {
   planningUserPrompt, scoutNudgePrompt, scoutSystemPrompt, scoutUserPrompt, writerNudgePrompt, writerSystemPrompt,
   writerUserPrompt,
 } from './prompts.ts'
-import { importJsonProjectsIfEmpty, migrateDeepResearchUnitFile, resolveDeepResearchUnitPath } from './migrate.ts'
+import { importJsonProjectsIfEmpty, importLegacySqliteProjectsIfEmpty, legacyDeepResearchSqlitePath, migrateDeepResearchUnitFile, resolveDeepResearchUnitPath } from './migrate.ts'
 import { ensurePluginPlatform, sqlitePathFor } from './platform.ts'
 import { deepResearchDomainSpec } from './spec.ts'
 import { ResearchEvidenceId, ResearchId, ResearchQuestionId } from './types.ts'
@@ -45,7 +45,7 @@ import type {
 export type * from './types.ts'
 export { ResearchEvidenceId, ResearchId, ResearchQuestionId } from './types.ts'
 export { deepResearchDomainSpec, researchCriterionSchema, researchEvidenceSchema, researchProjectSchema, researchQuestionSchema } from './spec.ts'
-export { defaultDeepResearchSqlitePath, defaultDeepResearchUnitPath, importJsonProjectsIfEmpty, migrateDeepResearchUnitFile, resolveDeepResearchUnitPath } from './migrate.ts'
+export { defaultDeepResearchSqlitePath, defaultDeepResearchUnitPath, defaultSharedSqlitePath, importJsonProjectsIfEmpty, importLegacySqliteProjectsIfEmpty, migrateDeepResearchUnitFile, resolveDeepResearchUnitPath } from './migrate.ts'
 export { assertPlanFitsDepth, inferResearchPlanDepth, planResearchBudget } from './budget.ts'
 export {
   buildResearchWritingPack, gateCandidatesByUrl, normalizeQuery, normalizeSubmittedCandidates,
@@ -103,15 +103,17 @@ export class DeepResearchService extends TypertRemoteService {
   constructor(ctx: Context, private readonly config: Config) { super(ctx, 'deepResearch') }
 
   protected async [Service.init](): Promise<void> {
+    const sqlitePath = sqlitePathFor(this.config)
     await ensurePluginPlatform(this.ctx, {
       domain: 'deepresearch',
-      sqlitePath: sqlitePathFor(this.config),
+      sqlitePath,
     })
     const jsonPath = resolveDeepResearchUnitPath(this.config.storageRoot)
     await migrateDeepResearchUnitFile(jsonPath)
     const domain = await this.ctx.storageDomain.open(deepResearchDomainSpec)
     this.ctx.effect(() => () => domain.close(), 'deepresearch.domainClose')
     this.table = domain.table('projects')
+    await importLegacySqliteProjectsIfEmpty(legacyDeepResearchSqlitePath(sqlitePath), sqlitePath, this.table)
     await importJsonProjectsIfEmpty(jsonPath, this.table)
     if (this.config.runnerEnabled) {
       for (const [id, project] of this.table.entries()) {

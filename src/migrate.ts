@@ -1,13 +1,16 @@
 /** On-disk deepresearch storage unit upgrades before the domain opens. */
 
-import { open, rename, rm } from 'node:fs/promises'
+import { access, open, rename, rm } from 'node:fs/promises'
+import { constants } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
+import { DatabaseSync } from 'node:sqlite'
 import { deepResearchDomainSpec, researchProjectSchema } from './spec.ts'
 import type { ResearchId, ResearchProject } from './types.ts'
 
 export const DEEPRESEARCH_UNIT_NAME = deepResearchDomainSpec.name
+export const SHARED_SQLITE_FILENAME = 'dsh.sqlite'
 
 const EMPTY_PROGRESS = { running: 0, waiting: 0, scouts: [] as unknown[] }
 
@@ -36,9 +39,64 @@ export function resolveDeepResearchUnitPath(storageRoot?: string, env: NodeJS.Pr
   return join(home, 'storages', `${DEEPRESEARCH_UNIT_NAME}.json`)
 }
 
-/** Default SQLite file used when the domain is routed to the sqlite backend. */
+/** Canonical sqlite file both product plugins mount when the host has none. */
+export function defaultSharedSqlitePath(env: NodeJS.ProcessEnv = process.env): string {
+  return join(dirname(defaultDeepResearchUnitPath(env)), SHARED_SQLITE_FILENAME)
+}
+
+/** Leftover plugin-named sqlite from before the shared-file cutover. */
 export function defaultDeepResearchSqlitePath(env: NodeJS.ProcessEnv = process.env): string {
   return resolveDeepResearchUnitPath(undefined, env).replace(/\.json$/u, '.sqlite')
+}
+
+export function legacyDeepResearchSqlitePath(sqlitePath: string): string {
+  return join(dirname(sqlitePath), 'deepresearch.sqlite')
+}
+
+/** Read JSON records from one sqlite KV table, or [] when the file/table is missing. */
+export function loadSqliteTableValues(path: string, unit: string, table: string): unknown[] {
+  let db: DatabaseSync
+  try {
+    db = new DatabaseSync(path, { readOnly: true })
+  } catch {
+    return []
+  }
+  try {
+    const physical = `u_${unit}_${table}`
+    const found = db.prepare(
+      'SELECT name FROM sqlite_master WHERE type = \'table\' AND name = ?',
+    ).get(physical) as { name: string } | undefined
+    if (found === undefined) return []
+    const rows = db.prepare(`SELECT value FROM "${physical}"`).all() as Array<{ value: string }>
+    return rows.map(row => JSON.parse(row.value) as unknown)
+  } finally {
+    db.close()
+  }
+}
+
+/**
+ * Copy leftover `deepresearch.sqlite` projects into an empty domain table.
+ * Skips when the live table already has rows, the legacy file is the live file, or the file is missing.
+ */
+export async function importLegacySqliteProjectsIfEmpty(
+  legacyPath: string,
+  liveSqlitePath: string,
+  table: { entries(): Iterable<[ResearchId, ResearchProject]>; put(id: ResearchId, project: ResearchProject): Promise<void> },
+): Promise<number> {
+  if ([...table.entries()].length > 0) return 0
+  if (resolve(legacyPath) === resolve(liveSqlitePath)) return 0
+  try {
+    await access(legacyPath, constants.R_OK)
+  } catch {
+    return 0
+  }
+  let imported = 0
+  for (const raw of loadSqliteTableValues(legacyPath, DEEPRESEARCH_UNIT_NAME, 'projects')) {
+    const project = researchProjectSchema.parse(raw)
+    await table.put(project.id, project)
+    imported += 1
+  }
+  return imported
 }
 
 /**

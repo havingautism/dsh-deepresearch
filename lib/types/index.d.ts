@@ -9,7 +9,7 @@ import type { ResearchCompleteRequest, ResearchConfirmRequest, ResearchDeleteReq
 export type * from './types.ts';
 export { ResearchEvidenceId, ResearchId, ResearchQuestionId } from './types.ts';
 export { deepResearchDomainSpec, researchCriterionSchema, researchEvidenceSchema, researchProjectSchema, researchQuestionSchema } from './spec.ts';
-export { defaultDeepResearchSqlitePath, defaultDeepResearchUnitPath, importJsonProjectsIfEmpty, migrateDeepResearchUnitFile, resolveDeepResearchUnitPath } from './migrate.ts';
+export { defaultDeepResearchSqlitePath, defaultDeepResearchUnitPath, defaultSharedSqlitePath, importJsonProjectsIfEmpty, importLegacySqliteProjectsIfEmpty, migrateDeepResearchUnitFile, resolveDeepResearchUnitPath } from './migrate.ts';
 export { assertPlanFitsDepth, inferResearchPlanDepth, planResearchBudget } from './budget.ts';
 export { buildResearchWritingPack, gateCandidatesByUrl, normalizeQuery, normalizeSubmittedCandidates, normalizeUrl, parseCandidatesFromText, selectReadyWaveBatch, } from './investigation.ts';
 /** Required project, evidence, and report limits. */

@@ -13,7 +13,7 @@ English | [中文](README.md)
 - 📊 Track question coverage, search/fetch budgets, limitations, and partial completion.
 - 📝 Save conclusions and a full or explicitly incomplete final report.
 - 🗂️ Search, filter, sort, resume, abort, or delete projects from the Web library.
-- 🤖 Planning submits a reviewable plan only. Confirming starts Scout / Evaluator per criterion (max 3 questions in parallel), then a Writer that cites writing-pack URLs. Normal chat does not inherit research tools or generic fetch. Projects persist in SQLite (`~/.dsh/storages/deepresearch.sqlite`); a leftover JSON unit is imported on first launch.
+- 🤖 Planning submits a reviewable plan only. Confirming starts Scout / Evaluator per criterion (max 3 questions in parallel), then a Writer that cites writing-pack URLs. Normal chat does not inherit research tools or generic fetch. Projects persist in the sqlite file shared with Notebooks (default `~/.dsh/storages/dsh.sqlite`, domain `deepresearch`). A leftover `deepresearch.sqlite` is imported first; JSON is imported only if that table is still empty.
 - 🔄 The research view polls `progress` every 750ms and draws the question list plus Scout cards (fuse, recent tools, verification, handoff).
 - ✨ Match Codemini's research modal, loading motion, and context-specific button shapes.
 
@@ -30,7 +30,7 @@ Open **Deep Research** from the sidebar footer and create a project. The plugin 
 
 Private research sessions record the host launch directory as `cwd` so DSH can assemble the persona and runtime context. A planning failure stays on the Plan step and displays the persisted error instead of opening an empty investigation board.
 
-At boot, if the host has no sqlite / HTTP fetch yet, this plugin mounts them; if they already exist, it reuses them. Research data lives in the `deepresearch` domain on that sqlite backend.
+At boot, if the host has no sqlite / HTTP fetch yet, this plugin mounts them; if they already exist, it reuses them. Research data lives in the `deepresearch` domain on that sqlite backend. Do not YAML-`insert` `storage-sqlite` again.
 
 ## Web fetch and security
 

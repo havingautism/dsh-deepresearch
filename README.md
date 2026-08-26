@@ -13,7 +13,7 @@
 - 📊 跟踪问题覆盖度、搜索与抓取预算、局限和部分完成状态。
 - 📝 保存结论，以及完整或明确标记为未完成的最终报告。
 - 🗂️ 在 Web 资料库中搜索、筛选、排序、恢复、中止或删除项目。
-- 🤖 创建项目后由私有规划 Agent 只提交计划；确认后再按子问题并行派出 Scout / Evaluator，最后用写作包撰写报告。普通聊天不挂研究工具，也不开通用 fetch。项目持久化在 SQLite（`~/.dsh/storages/deepresearch.sqlite`）；首次启动会导入旧的 JSON 文件。
+- 🤖 创建项目后由私有规划 Agent 只提交计划；确认后再按子问题并行派出 Scout / Evaluator，最后用写作包撰写报告。普通聊天不挂研究工具，也不开通用 fetch。项目持久化在与随手记共用的 SQLite（默认 `~/.dsh/storages/dsh.sqlite`，domain `deepresearch`）；启动时先迁旧的 `deepresearch.sqlite`，只有那份也空时才导入更早的 JSON 文件。
 - 🔄 研究页每 750ms 刷新 `progress`：题列表、Scout 卡（工具 fuse、最近检索/抓取、核验、handoff）和已接受证据。
 - ✨ 对齐 Codemini 的研究 Modal、加载动效和各场景按钮形态。
 
@@ -30,7 +30,7 @@ dsh web
 
 私有研究 Session 会记录宿主启动目录作为 `cwd`，以便 DSH persona 和运行时上下文可以完整装配。规划失败会停留在“计划”步骤并显示持久化错误，不会跳到空的调查看板。
 
-启动时若宿主还没有 sqlite / HTTP fetch，插件会自行挂上；已经有了则共用。研究数据在 sqlite 里占用独立的 `deepresearch` 域。
+启动时若宿主还没有 sqlite / HTTP fetch，插件会自行挂上；已经有了则共用。研究数据在 sqlite 里占用独立的 `deepresearch` 域。不要再 YAML `insert` 一遍 `storage-sqlite`。
 
 ## 网页抓取与安全
 

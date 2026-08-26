@@ -6,7 +6,7 @@ import type {} from '@deepseek-ai/dsh-storage'
 import type {} from '@deepseek-ai/dsh-storage-domain'
 import * as StorageSqlite from '@deepseek-ai/dsh-storage-sqlite'
 import * as WebFetchHttp from '@deepseek-ai/dsh-web-fetch-http'
-import { defaultDeepResearchSqlitePath } from './migrate.ts'
+import { defaultSharedSqlitePath } from './migrate.ts'
 
 function sqliteMounted(ctx: Context): boolean {
   return ctx.storage.backend.names().includes('sqlite')
@@ -25,8 +25,8 @@ function isAlreadyMountedError(error: unknown): boolean {
 /** Sqlite file for this plugin when it is the one that mounts the backend. */
 export function sqlitePathFor(config: { storageRoot?: string }, env: NodeJS.ProcessEnv = process.env): string {
   const root = config.storageRoot?.trim()
-  if (root !== undefined && root !== '') return join(root, 'deepresearch.sqlite')
-  return defaultDeepResearchSqlitePath(env)
+  if (root !== undefined && root !== '') return join(root, 'dsh.sqlite')
+  return defaultSharedSqlitePath(env)
 }
 
 /** Register the sqlite backend when the host has not already done so. */
