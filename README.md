@@ -30,6 +30,14 @@ dsh web
 
 私有研究 Session 会记录宿主启动目录作为 `cwd`，以便 DSH persona 和运行时上下文可以完整装配。规划失败会停留在“计划”步骤并显示持久化错误，不会跳到空的调查看板。
 
+## 网页抓取与安全
+
+DSH 默认不挂载 fetch provider、不开放聊天 `web_fetch`（见 [dsh-base `cordis.patch.yml`](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/bundle/base/cordis.patch.yml#L396-L418)）。本插件 patch **会 insert** `@deepseek-ai/dsh-web-fetch-http`（loader id：`web-fetch-http`），供私有 Scout 的 `research_web_fetch` 与宿主 `ctx.web.fetch` 使用。
+
+若同时安装 `@deepseek-ai/dsh-notebooks`，**只需这一处 insert**；随手记 patch 不再重复挂载，两个插件共用同一份 provider。单独安装深度研究时，由本插件提供 fetch。
+
+安装即表示你接受网页抓取带来的 SSRF 类风险；请在可信环境使用。详见 [Web 默认搜索决策说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/.agents/notes/implemented/feature/2026-07-31-web-default-search.zh.md)。
+
 ## 模型体验
 
 ### System prompt

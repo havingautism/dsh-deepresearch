@@ -30,6 +30,14 @@ Open **Deep Research** from the sidebar footer and create a project. The plugin 
 
 Private research sessions record the host launch directory as `cwd` so DSH can assemble the persona and runtime context. A planning failure stays on the Plan step and displays the persisted error instead of opening an empty investigation board.
 
+## Web fetch and security
+
+DSH does not mount a fetch provider or expose chat `web_fetch` by default (see [dsh-base `cordis.patch.yml`](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/bundle/base/cordis.patch.yml#L396-L418)). This plugin's patch **inserts** `@deepseek-ai/dsh-web-fetch-http` (loader id: `web-fetch-http`) for private Scout `research_web_fetch` and host `ctx.web.fetch`.
+
+When `@deepseek-ai/dsh-notebooks` is also installed, **only this patch inserts fetch**; the notebooks patch does not, so both plugins share one provider. A deepresearch-only install gets fetch from this bundle.
+
+Installing it opts into web retrieval and associated SSRF-style risk. Use in a trusted environment. See the [default Web search decision note](https://github.com/deepseek-ai/deepseek-harness/blob/master/.agents/notes/implemented/feature/2026-07-31-web-default-search.md).
+
 ## Model Experience
 
 ### System prompt
