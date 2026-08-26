@@ -15,6 +15,7 @@
     "src/spec.ts",
     "src/types.ts",
     "src/artifacts.ts",
+    "src/assistant-text.ts",
     "src/budget.ts",
     "src/investigation.ts",
     "src/prompts.ts",

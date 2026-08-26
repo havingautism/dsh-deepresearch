@@ -141,11 +141,11 @@ export declare const researchProjectSchema: z.ZodObject<{
     }>;
     phase: z.ZodEnum<{
         planning: "planning";
-        awaiting_plan_confirm: "awaiting_plan_confirm";
         investigating: "investigating";
+        writing: "writing";
+        awaiting_plan_confirm: "awaiting_plan_confirm";
         ready_for_report: "ready_for_report";
         incomplete: "incomplete";
-        writing: "writing";
         done: "done";
         failed: "failed";
         aborted: "aborted";

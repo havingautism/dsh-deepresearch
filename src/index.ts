@@ -30,6 +30,7 @@ import {
   planningUserPrompt, scoutNudgePrompt, scoutSystemPrompt, scoutUserPrompt, writerNudgePrompt, writerSystemPrompt,
   writerUserPrompt,
 } from './prompts.ts'
+import { lastAssistantText, watchDraft } from './assistant-text.ts'
 import { importJsonProjectsIfEmpty, importLegacySqliteProjectsIfEmpty, legacyDeepResearchSqlitePath, migrateDeepResearchUnitFile, resolveDeepResearchUnitPath } from './migrate.ts'
 import { ensurePluginPlatform, sqlitePathFor } from './platform.ts'
 import { deepResearchDomainSpec } from './spec.ts'
@@ -724,7 +725,7 @@ export class DeepResearchService extends TypertRemoteService {
       if (early >= 0) run.handles.splice(early, 1)
       return
     }
-    const stopDraft = watchDraft(handle, text => { spec.onDraft?.(text) })
+    const stopDraft = watchDraft(handle, text => { spec.onDraft?.(text) }, 4000)
     try {
       handle.agent.followup(createUserMessage({ content: [{ type: 'text', text: spec.user }], source: { kind: 'user' } }))
       await handle.agent.whenIdle()
@@ -891,64 +892,6 @@ function snapshot(project: ResearchProject): ResearchProject {
       })),
     }),
   })
-}
-
-function lastAssistantText(handle: AgentHandle): string {
-  const agent = handle.agent as { messages?: unknown; session?: { messages?: unknown } }
-  const messages = Array.isArray(agent.messages) ? agent.messages : Array.isArray(agent.session?.messages) ? agent.session.messages : []
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index] as { role?: string; content?: unknown }
-    if (message.role !== 'assistant') continue
-    const text = messageText(message.content)
-    if (text !== '') return text
-  }
-  return ''
-}
-
-function messageText(content: unknown): string {
-  if (typeof content === 'string') return content
-  if (!Array.isArray(content)) return ''
-  return content.map(block => typeof block === 'string' ? block : String((block as { text?: string }).text ?? '')).join('')
-}
-
-function watchDraft(handle: AgentHandle, onDraft: (text: string) => void): () => void {
-  let last = ''
-  let streamed = ''
-  let timer: ReturnType<typeof setTimeout> | undefined
-  const push = (text: string) => {
-    const next = text.trim()
-    if (next === '' || next === last) return
-    last = next
-    onDraft(next.slice(0, 4000))
-  }
-  const emit = () => { push(streamed || lastAssistantText(handle)) }
-  const schedule = () => {
-    if (timer !== undefined) return
-    timer = setTimeout(() => { timer = undefined; emit() }, 400)
-  }
-  const ctx = handle.agent.ctx as { on?: (event: string, listener: (payload?: unknown) => void) => () => void } | undefined
-  const offChunk = ctx?.on?.('assistant/chunk', payload => {
-    const chunk = (payload as { chunk?: { type?: string; text?: string } } | undefined)?.chunk
-    if (chunk?.type === 'text-delta' && chunk.text) {
-      streamed += chunk.text
-      schedule()
-    }
-  })
-  const offMessage = ctx?.on?.('assistant/message', payload => {
-    const text = messageText((payload as { message?: { content?: unknown } } | undefined)?.message?.content)
-    if (text !== '') {
-      streamed = text
-      emit()
-    }
-  })
-  const poll = setInterval(emit, 600)
-  emit()
-  return () => {
-    if (timer !== undefined) clearTimeout(timer)
-    clearInterval(poll)
-    offChunk?.()
-    offMessage?.()
-  }
 }
 
 export default DeepResearchService

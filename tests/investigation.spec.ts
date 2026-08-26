@@ -216,3 +216,32 @@ describe('artifacts', () => {
     expect(read.text).toHaveLength(1000)
   })
 })
+
+describe('assistant session text', () => {
+  it('reads assembled assistant text from deriveMessages', async () => {
+    const { assistantTextFromSession } = await import('../src/assistant-text.ts')
+    const text = assistantTextFromSession({
+      id: 's1',
+      deriveMessages: () => [
+        { role: 'user', content: [{ type: 'text', text: 'write' }] },
+        { role: 'assistant', content: [{ type: 'text', text: 'Report body' }] },
+      ],
+      events: [],
+    })
+    expect(text).toBe('Report body')
+  })
+
+  it('reads in-flight chunks when deriveMessages is still empty', async () => {
+    const { assistantTextFromSession } = await import('../src/assistant-text.ts')
+    const text = assistantTextFromSession({
+      id: 's1',
+      deriveMessages: () => [],
+      events: [
+        { type: 'step/start', data: { turn: 1, step: 1 } },
+        { type: 'assistant/chunk', data: { chunk: { type: 'text-delta', text: 'Draft ' } } },
+        { type: 'assistant/chunk', data: { chunk: { type: 'text-delta', text: 'report' } } },
+      ],
+    })
+    expect(text).toBe('Draft report')
+  })
+})
