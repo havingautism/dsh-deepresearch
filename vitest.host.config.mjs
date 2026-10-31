@@ -88,7 +88,7 @@ const harnessAliases = [
   '@deepseek-ai/dsh-brand',
   '@deepseek-ai/dsh-agent',
   '@deepseek-ai/dsh-agent-default-model',
-  '@deepseek-ai/dsh-agent-presets',
+  '@deepseek-ai/dsh-agent-preset-registry',
   '@deepseek-ai/dsh-llm',
   '@deepseek-ai/dsh-session',
   '@deepseek-ai/schemastery',

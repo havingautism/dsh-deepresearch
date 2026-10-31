@@ -1,7 +1,7 @@
 /** Sidebar foot control that opens the global Deep Research workspace. */
 
 import { useSyncExternalStore } from 'react'
-import { IconSparkle16 as IconBolt } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconSparkleMedium as IconBolt } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type { DeepResearchKey } from './locales.ts'

@@ -1,9 +1,11 @@
 /** Client mount for the deep-research Remote contribution. */
 
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type {} from '@deepseek-ai/dsh-client-ui-slots/client'
 import deepResearchRemote from '@deepseek-ai/dsh-deepresearch/remote'
 import type { RemoteResult, TypertClientRemote } from '@deepseek-ai/dsh-typert-protocol'
 import type { ResearchDeleteResult, ResearchProject, ResearchStartRequest } from '../types.ts'

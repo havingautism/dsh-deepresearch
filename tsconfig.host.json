@@ -11,7 +11,6 @@
   },
   "files": [
     "src/index.ts",
-    "src/invariant.ts",
     "src/spec.ts",
     "src/types.ts",
     "src/artifacts.ts",
@@ -27,7 +26,7 @@
     { "path": "../deepseek-harness/vendor/schemastery" },
     { "path": "../deepseek-harness/packages/core/agent" },
     { "path": "../deepseek-harness/packages/core/agent-default-model" },
-    { "path": "../deepseek-harness/packages/preset/agent-presets" },
+    { "path": "../deepseek-harness/packages/preset/agent-preset-registry" },
     { "path": "../deepseek-harness/packages/core/session" },
     { "path": "../deepseek-harness/packages/core/system-prompt" },
     { "path": "../deepseek-harness/packages/core/tools" },
@@ -36,7 +35,6 @@
     { "path": "../deepseek-harness/packages/storage/storage-domain" },
     { "path": "../deepseek-harness/packages/storage/storage-sqlite" },
     { "path": "../deepseek-harness/packages/web/web-fetch-http" },
-    { "path": "../deepseek-harness/packages/typert/protocol" },
-    { "path": "../deepseek-harness/packages/runtime-diagnostics/invariants" }
+    { "path": "../deepseek-harness/packages/typert/protocol" }
   ]
 }

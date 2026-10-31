@@ -218,6 +218,7 @@ describe('Deep Research extension', () => {
         return {
           agent: {
             ctx: agentCtx,
+            session: { id: 'deepresearch-test-session', deriveMessages: () => [] },
             followup: (message: { content: Array<{ type: string; text?: string }> }) => { prompts.push(message.content.map(block => block.text ?? '').join('')) },
             whenIdle: () => idle,
             cancel: () => { resolveIdle?.() },
@@ -311,6 +312,7 @@ describe('Deep Research extension', () => {
         return {
           agent: {
             ctx: { on: () => () => undefined },
+            session: { id: 'deepresearch-test-session', deriveMessages: () => [] },
             followup: () => undefined,
             whenIdle: async () => {
               const submitPlan = byName.get('deep_research_submit_plan')

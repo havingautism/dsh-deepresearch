@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import { apply } from '../src/client/index.ts'
 import { createDeepResearchUiStore, readDeepResearchRoute } from '../src/client/ui-store.ts'
 import type { ResearchViewApi } from '../src/client/view-types.ts'

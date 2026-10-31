@@ -175,6 +175,12 @@ export type DeepResearchKey =
   | 'report.writing'
   | 'report.empty'
   | 'report.retry'
+  | 'markdown.copy'
+  | 'markdown.copied'
+  | 'markdown.code'
+  | 'markdown.wrap'
+  | 'markdown.unwrap'
+  | 'markdown.footnotes'
   // default plan template
   | 'planTemplate.define'
   | 'planTemplate.defineCriteria'
@@ -360,6 +366,12 @@ export const zh: Record<DeepResearchKey, string> = {
   'report.writing': '后台研究 Agent 正在整理证据并撰写报告…',
   'report.empty': '报告尚未生成。',
   'report.retry': '重新撰写报告',
+  'markdown.copy': '复制',
+  'markdown.copied': '已复制',
+  'markdown.code': '代码',
+  'markdown.wrap': '自动换行',
+  'markdown.unwrap': '取消换行',
+  'markdown.footnotes': '脚注',
   'planTemplate.define': '界定核心问题：{question}',
   'planTemplate.defineCriteria': '明确回答范围、关键概念和判定标准',
   'planTemplate.search': '检索并筛选权威来源',
@@ -536,6 +548,12 @@ export const en: Record<DeepResearchKey, string> = {
   'report.writing': 'The background research agent is synthesizing evidence and writing the report…',
   'report.empty': 'No report has been generated yet.',
   'report.retry': 'Retry report writing',
+  'markdown.copy': 'Copy',
+  'markdown.copied': 'Copied',
+  'markdown.code': 'Code',
+  'markdown.wrap': 'Wrap',
+  'markdown.unwrap': 'Unwrap',
+  'markdown.footnotes': 'Footnotes',
   'planTemplate.define': 'Define the core question: {question}',
   'planTemplate.defineCriteria': 'Clarify the answer scope, key concepts, and success criteria',
   'planTemplate.search': 'Search and filter authoritative sources',

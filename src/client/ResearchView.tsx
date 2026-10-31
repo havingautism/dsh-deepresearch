@@ -1,7 +1,7 @@
 /** Codemini-aligned Deep Research library, plan review, and live investigation workspace. */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { IconCheckOutline14 as IconCheck, IconChevronDownOutline14 as IconChevronDown, IconChevronLeftOutline14 as IconArrowLeft, IconChevronUpOutline14 as IconChevronUp, IconCloseOutline16 as IconX, IconDataOutline16 as IconLayoutGrid, IconGoalOutline16 as IconTarget, IconListPenOutline16 as IconList, IconLoadingOutline16 as IconLoading, IconPlusOutline16 as IconPlus, IconRightUpOutline14 as IconExternalLink, IconSparkle16 as IconBolt, MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconCheckOutlineMedium as IconCheck, IconChevronDownOutlineMedium as IconChevronDown, IconChevronLeftOutlineMedium as IconArrowLeft, IconChevronUpOutlineMedium as IconChevronUp, IconCloseOutlineMedium as IconX, IconDataOutlineMedium as IconLayoutGrid, IconGoalOutlineMedium as IconTarget, IconListPenOutlineMedium as IconList, IconLoadingOutlineMedium as IconLoading, IconPlusOutlineMedium as IconPlus, IconRightUpOutlineMedium as IconExternalLink, IconSparkleMedium as IconBolt, MarkdownText, type MarkdownLabels } from '@deepseek-ai/dsh-client-ui-primitives'
 import { ResearchId, type ResearchCoverageStatus, type ResearchDepth, type ResearchPhase, type ResearchProject, type ResearchStartRequest, type ResearchVerification } from '../types.ts'
 import type { ResearchViewApi } from './view-types.ts'
 import { hydrateResearchProject } from './project-hydrate.ts'
@@ -10,6 +10,21 @@ import css from './views.module.css'
 
 type PhaseFilter = 'all' | 'planning' | 'investigating' | 'done'
 type Translate = (key: DeepResearchKey, params?: Record<string, unknown>) => string
+
+function markdownLabels(t: Translate): MarkdownLabels {
+  return {
+    code: {
+      copyLabel: t('markdown.copy'),
+      copiedLabel: t('markdown.copied'),
+      toolbarLabels: {
+        codeLabel: t('markdown.code'),
+        wrapLabel: t('markdown.wrap'),
+        unwrapLabel: t('markdown.unwrap'),
+      },
+    },
+    footnotes: t('markdown.footnotes'),
+  }
+}
 type EditableQuestion = ResearchStartRequest['questions'][number]
 type ResearchQuestionView = ResearchProject['questions'][number]
 type ResearchEvidenceView = ResearchProject['evidence'][number]
@@ -553,10 +568,11 @@ function EvidenceCard({ evidence, t }: { evidence: ResearchEvidenceView; t: Tran
 function ReportPane({ project, t, busy, onRewrite }: { project: ResearchProject; t: Translate; busy: boolean; onRewrite: () => void }) {
   const accepted = project.evidence.filter(item => item.status !== 'candidate' && item.status !== 'rejected')
   const writing = project.phase === 'writing' && project.runState === 'running'
+  const labels = useMemo(() => markdownLabels(t), [t])
   return <section className={css.reportPane}>
     <div className={css.sectionHeader}><div><h3>{t('report.title')}</h3><p>{t('report.subtitle')}</p></div>{project.planConfirmed && !writing ? <button className={css.primaryButton} type="button" disabled={busy} onClick={onRewrite}>{project.report ? t('report.retry') : t('investigate.writeReport')}</button> : null}</div>
     {project.report !== null
-      ? <article className={css.reportDocument}><MarkdownText text={project.report} streaming={writing} /></article>
+      ? <article className={css.reportDocument}><MarkdownText text={project.report} streaming={writing} labels={labels} /></article>
       : writing
         ? <div className={css.reportPending} role="status"><IconLoading className={css.spinner} size={16} /><span>{t('report.writing')}</span></div>
         : <div className={css.reportPending}>{t('report.empty')}</div>}
